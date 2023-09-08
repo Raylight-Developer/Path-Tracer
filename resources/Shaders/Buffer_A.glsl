@@ -37,6 +37,18 @@ vec2 rand2() { return vec2 (hash(white_noise_seed).xy)  / float(0xffffffffu); }
 vec3 rand3() { return vec3 (hash(white_noise_seed).xyz) / float(0xffffffffu); }
 vec4 rand4() { return vec4 (hash(white_noise_seed))     / float(0xffffffffu); }
 
+
+vec2 nrand2(float sigma, vec2 mean) {
+	vec2 Z = rand2();
+	return mean + sigma * sqrt(-2.0 * log(Z.x)) * vec2(cos(TWO_PI * Z.y), sin(TWO_PI * Z.y));
+}
+
+vec3 nrand3(float sigma, vec3 mean) {
+	vec4 Z = rand4();
+	return mean + sigma * sqrt(-2.0 * log(Z.xxy)) * vec3(cos(TWO_PI * Z.z), sin(TWO_PI * Z.z), cos(TWO_PI * Z.w));
+}
+
+
 void rng_initialize(vec2 pix, uint frame) {
 	pixel = uvec2(pix);
 	white_noise_seed = uvec4(pixel, frame, uint(pixel.x) + uint(pixel.y));

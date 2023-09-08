@@ -1,14 +1,14 @@
-#include "./include/Include.hpp"
+#include "Include.hpp"
 
-#include"./include/VAO.h"
-#include"./include/VBO.h"
-#include"./include/EBO.h"
-#include"./include/FBO.h"
-#include"./include/FBT.h"
-#include"./include/Shader.h"
+#include "VAO.h"
+#include "VBO.h"
+#include "EBO.h"
+#include "FBO.h"
+#include "FBT.h"
+#include "Shader.h"
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "./include/stb_image.h"
+#include "stb_image.h"
 
 GLfloat vertices[] = {
 	-1.0f, -1.0f, 0.0f, 0.0f,
@@ -64,7 +64,7 @@ int main() {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	GLFWwindow* window = glfwCreateWindow(Width, Height, "GLSL Shader", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(Width, Height, "Kerzenlicht Spectral Path Tracer", NULL, NULL);
 
 	GLFWimage icons[1];
 	icons[0].pixels = stbi_load("./resources/Icon.png", &icons[0].width, &icons[0].height, 0, 4);

@@ -28,8 +28,9 @@
 #include <map>
 #include <set>
 
-#include<glad/glad.h>
-#include<GLFW/glfw3.h>
+#include "OpenColorIO-2.3.0/build/include/OpenColorIO/OpenColorABI.h"
+#include <glad/glad/glad.h>
+#include <GLFW/glfw3.h>
 
 using namespace std;
 
