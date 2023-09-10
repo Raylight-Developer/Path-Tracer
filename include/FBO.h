@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../include/Include.hpp"
+#include "Include.h"
 
 struct FBO {
 	GLuint ID;

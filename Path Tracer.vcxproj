@@ -113,7 +113,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)\external;$(SolutionDir)\external\glwf 3.3.8\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\external;$(SolutionDir)\external\glad;$(SolutionDir)\external\glwf 3.3.8\include</AdditionalIncludeDirectories>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
@@ -132,7 +132,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)\external;$(SolutionDir)\external\glwf 3.3.8\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\external;$(SolutionDir)\external\glad;$(SolutionDir)\external\glwf 3.3.8\include</AdditionalIncludeDirectories>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
@@ -146,17 +146,23 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="include\File_Watcher.h" />
     <ClInclude Include="include\FBT.h" />
     <ClInclude Include="include\FBO.h" />
-    <ClInclude Include="include\Include.hpp" />
+    <ClInclude Include="include\Include.h" />
     <ClInclude Include="include\EBO.h" />
     <ClInclude Include="include\Shader.h" />
     <ClInclude Include="external\stb_image.h" />
     <ClInclude Include="include\VAO.h" />
     <ClInclude Include="include\VBO.h" />
     <ClInclude Include="include\Texture.h" />
+    <ClInclude Include="include\Renderer.h" />
+    <ClInclude Include="include\Scene.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="source\Scene.cpp" />
+    <ClCompile Include="source\Renderer.cpp" />
+    <ClCompile Include="source\File_Watcher.cpp" />
     <ClCompile Include="resources\glad.c" />
     <ClCompile Include="source\FBT.cpp" />
     <ClCompile Include="source\FBO.cpp" />
@@ -168,6 +174,7 @@
     <ClCompile Include="source\Texture.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="resources\Background.exr" />
     <None Include="resources\Shaders\Buffer_A.glsl" />
     <None Include="resources\Shaders\Main_Image.glsl" />
     <None Include="resources\Shaders\Vert.glsl" />

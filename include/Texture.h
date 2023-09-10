@@ -1,15 +1,14 @@
 #pragma once
 
-#include "../include/Include.hpp"
+#include "Include.h"
 
 struct Texture {
 	GLuint ID;
 
 	Texture() {};
 
-	void Init(const int& i_width, const int& i_height);
+	void Init(const string& i_image_path);
 
-	void Resize(const int& i_width, const int& i_height);
 	void Bind(const GLenum& i_texture_id);
 	void Unbind();
 	void Delete();

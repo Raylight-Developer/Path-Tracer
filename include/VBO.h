@@ -1,12 +1,13 @@
 #pragma once
 
-#include "../include/Include.hpp"
+#include "Include.h"
 
 struct VBO {
 	GLuint ID;
 
-	VBO(GLfloat* vertices, GLsizeiptr size);
+	VBO() {};
 
+	void Init(GLfloat* vertices, GLsizeiptr size);
 	void Bind();
 	void Unbind();
 	void Delete();

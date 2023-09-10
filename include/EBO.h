@@ -1,12 +1,13 @@
 #pragma once
 
-#include "../include/Include.hpp"
+#include "Include.h"
 
 struct EBO {
 	GLuint ID;
 
-	EBO(GLuint* indices, GLsizeiptr size);
+	EBO() {};
 
+	void Init(GLuint* indices, GLsizeiptr size);
 	void Bind();
 	void Unbind();
 	void Delete();

@@ -6,7 +6,6 @@
 #include <windows.h>
 #include <stdexcept>
 #include <iostream>
-#include <iostream>
 #include <optional>
 #include <direct.h>
 #include <iomanip>
@@ -28,8 +27,7 @@
 #include <map>
 #include <set>
 
-#include "OpenColorIO-2.3.0/build/include/OpenColorIO/OpenColorABI.h"
-#include <glad/glad/glad.h>
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 using namespace std;

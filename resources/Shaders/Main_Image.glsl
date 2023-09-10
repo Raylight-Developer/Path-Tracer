@@ -12,5 +12,5 @@ in vec2 fragTexCoord;
 out vec4 fragColor;
 
 void main() {
-	fragColor = texture(iRawFrame, fragTexCoord);
+	fragColor = texture(iRawFrame, fragTexCoord) * 2.0;
 }
