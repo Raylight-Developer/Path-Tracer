@@ -196,6 +196,9 @@ const Sphere Scene_Spheres[2] = Sphere[2](
 // FUNCTIONS ---------------------------------------------------------------------------------------
 
 void getRay(in vec2 uv, out vec3 ray_origin, out vec3 ray_direction) {
+	uv = uv -0.5;
+	uv.x *= iResolution.x / iResolution.y;
+
 	// CAMERA POSITION
 	ray_origin = vec3(1.0, 5.0, 0.00);
 	float sensor_width = 0.036;
@@ -249,20 +252,26 @@ float Spehere_Intersection(Ray ray, Sphere sphere) {
 Hit Scene_Intersection(in Ray ray) {
 	Hit hit_data;
 
-	// for (sphere_item : Scene) {
-	// 	float hit_ray_length = Spehere_Intersection(ray, sphere_item);
-	// 	if (hit_ray_length < hit_data.Distance && hit_ray_length > 0.001) { // ZBuffer
-	// 		hit_data.Distance = hit_ray_length;
-	// 		hit_data.Hit_Pos = ray.Position + ray.Direction * hit_ray_length;
+	for (int i =0; i < 2; i++) {
+		float hit_ray_length = Spehere_Intersection(ray, Scene_Spheres[i]);
+		if (hit_ray_length < hit_data.Distance && hit_ray_length > 0.001) { // ZBuffer
+			hit_data.Distance = hit_ray_length;
+			hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * hit_ray_length;
 
-	// 		hit_data.Hit_Normal = normalize(hit_data.Hit_Pos - sphere_item.Position);
-	// 	}
-	// }
+			hit_data.Hit_Normal = normalize(hit_data.Hit_Pos - Scene_Spheres[i].Position);
+		}
+	}
 	return hit_data;
 }
 
 vec4 render() {
-	return vec4(1);
+	Ray light_path;
+		getRay(fragCoord, light_path.Ray_Origin, light_path.Ray_Direction);
+		Sphere sphere = Sphere(vec3( 1.0, 1.0, 0.0), 1.0, Material(vec3(1), vec3(0), vec3(1), 0.25, 1.35));
+	if (Spehere_Intersection(light_path, sphere) != -1.0) {
+		return vec4(1.0);
+	}
+	return vec4(0,0,0,1);
 }
 
 // Main ---------------------------------------------------------------------------------------

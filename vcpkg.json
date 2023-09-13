@@ -1,11 +1,11 @@
 {
-  "name": "path-tracer",
-  "version-string": "0.1",
-  "dependencies": [
-	"tiff",
-	"opencolorio",
-	"openexr",
-	"glfw3"
-  ],
-  "builtin-baseline": "da21e45c9ae689f63aa27f3a4ee0e64fe6b16494"
+	"name": "path-tracer",
+	"version-string": "0.1",
+	"dependencies": [
+		"tiff",
+		"opencolorio",
+		"openexr",
+		"glfw3"
+	],
+	"builtin-baseline": "da21e45c9ae689f63aa27f3a4ee0e64fe6b16494"
 }
