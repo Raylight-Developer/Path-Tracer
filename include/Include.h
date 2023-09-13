@@ -36,3 +36,13 @@ using namespace std;
 #define TWO_PI      6.283185307179586
 #define INVERTED_PI 0.318309886183791
 #define DEG_RAD     0.017453292519943
+
+struct File_Extension {
+	enum Enum {
+		BMP,
+		EXR,
+		HDR,
+		JPG,
+		PNG
+	};
+};

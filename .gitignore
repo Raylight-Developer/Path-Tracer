@@ -1,4 +1,5 @@
 .vs/
 x64/
-enc_temp_folder/
 external/
+enc_temp_folder/
+vcpkg_installed/

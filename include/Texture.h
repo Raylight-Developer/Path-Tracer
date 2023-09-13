@@ -7,7 +7,7 @@ struct Texture {
 
 	Texture() {};
 
-	void Init(const string& i_image_path);
+	void Init(const string& i_image_path, const File_Extension::Enum& i_type);
 
 	void Bind(const GLenum& i_texture_id);
 	void Unbind();
