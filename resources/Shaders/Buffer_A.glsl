@@ -71,11 +71,22 @@ vec3 white_noise() {
 // STRUCTS ---------------------------------------------------------------------------------------
 
 struct Material {
-	vec3  Albedo;
-	vec3  Emmision;
-	vec3  Refraction;
+	float Diffuse_Gain;
+	vec3  Diffuse_Color;
+	float Emmisive_Gain;
+	vec3  Emmisive_Color;
+	float Specular_Gain;
 	float Roughness;
+	float Refraction;
+	float Reflection;
 	float IOR;
+	float Absorption;
+};
+
+struct Sun_Light {
+	float Intensity;
+	vec3  Color;
+	vec3  Direction;
 };
 
 struct Ray {
@@ -87,6 +98,7 @@ struct Hit {
 	float Ray_Length;
 	vec3  Hit_Normal;
 	vec3  Hit_Pos;
+	Material Hit_Mat;
 };
 
 struct Sphere {
@@ -104,9 +116,10 @@ struct Triangle {
 
 // SCENE ---------------------------------------------------------------------------------------
 
-const Sphere Scene_Spheres[2] = Sphere[2](
-	Sphere(vec3(  1.25, 0.0, -2.5 ), 1.25, Material(vec3(1), vec3(0), vec3(1), 0.25, 1.35)),
-	Sphere(vec3( -0.75, 0.0,  0.0 ), 1.5, Material(vec3(1), vec3(0), vec3(1), 0.25, 1.35))
+const Sphere Scene_Spheres[3] = Sphere[3](
+	Sphere(vec3(  1.25, 0.0, -2.5 ), 1.25, Material(1, vec3(0,0,1), 0, vec3(1), 0, 0.5 , 0 ,0 , 1  , 0.85)),
+	Sphere(vec3(   0.0, 0.0, -7.5 ), 1.0 , Material(1, vec3(1,1,1), 0, vec3(1), 1, 0.25, 1 ,1 , 1.5, 0.95)),
+	Sphere(vec3( -0.75, 0.0,  0.0 ), 1.5 , Material(1, vec3(1,1,1), 1, vec3(1), 0, 0   , 0 ,0 , 1  , 1.0 ))
 );
 
 // FUNCTIONS ---------------------------------------------------------------------------------------
@@ -139,37 +152,56 @@ Hit Scene_Intersection(in Ray ray) {
 	Hit hit_data;
 	hit_data.Ray_Length = MAX_DIST;
 
-	for (int i =0; i < 2; i++) {
+	for (int i =0; i < 3; i++) {
 		float resultRayLength = Spehere_Intersection(ray, Scene_Spheres[i]);
 		if(resultRayLength < hit_data.Ray_Length && resultRayLength > 0.001) {
 			hit_data.Ray_Length = resultRayLength;
 			hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * resultRayLength;
 			hit_data.Hit_Normal = normalize(hit_data.Hit_Pos - Scene_Spheres[i].Position);
+			hit_data.Hit_Mat = Scene_Spheres[i].Mat;
 		}
 	}
 	return hit_data;
 }
 
-vec4 render() {
+vec4 renderRadiance() {
 	Ray ray;
 	getRay(fragCoord, ray.Ray_Origin, ray.Ray_Direction);
 
-	vec4 Color = vec4(0);
+	vec3 Color = vec3(0);
+	float Trasparency = 1;
 	float Absorption = 1.0;
 
-	for(int i = 0; i < RAY_BOUNCES; i++) {
+	for(int i = 0; i < 1; i++) {
 		Hit hit_data = Scene_Intersection(ray);
-		if(hit_data.Ray_Length >= MAX_DIST) {
-			Color = vec4(0.5, 0.5, 0.9, 1) * Absorption; // Ambient Lighting
+
+		if (hit_data.Ray_Length >= MAX_DIST) {
+			Color = vec3(0.5, 0.5, 0.9) * Absorption; // Ambient Lighting
+			Trasparency = 0;
 			break;
 		}
 
-		Absorption *= 0.85; // Energy Loss
+		if (hit_data.Hit_Mat.Diffuse_Gain > 0) {
+			Color += hit_data.Hit_Mat.Diffuse_Color * Absorption;
+			ray.Ray_Direction = reflect(ray.Ray_Direction, hit_data.Hit_Normal);
+		}
+		else if (hit_data.Hit_Mat.Specular_Gain > 0){
+			Color += hit_data.Hit_Mat.Diffuse_Color * Absorption;
+			ray.Ray_Direction = reflect(ray.Ray_Direction, hit_data.Hit_Normal);
+		}
+		else if (hit_data.Hit_Mat.Refraction > 0){
+			Color += hit_data.Hit_Mat.Diffuse_Color * Absorption;
+			ray.Ray_Direction = refract(ray.Ray_Direction, hit_data.Hit_Normal, hit_data.Hit_Mat.IOR);
+		}
+		else if (hit_data.Hit_Mat.Emmisive_Gain > 0){
+			Color += hit_data.Hit_Mat.Diffuse_Color * Absorption;
+			ray.Ray_Direction = reflect(ray.Ray_Direction, hit_data.Hit_Normal);
+		}
 
-		ray.Ray_Origin = ray.Ray_Origin + ray.Ray_Direction * hit_data.Ray_Length;
-		ray.Ray_Direction = normalize(reflect(ray.Ray_Direction, hit_data.Hit_Normal));
+		ray.Ray_Origin = ray.Ray_Origin + ray.Ray_Direction * 0.0001;
+		Absorption *= hit_data.Hit_Mat.Absorption;
 	}
-	return Color;
+	return vec4(Color, Trasparency);
 }
 
 // Main ---------------------------------------------------------------------------------------
@@ -182,5 +214,5 @@ void main() {
 	// else {
 	// 	fragColor = texture(iLastFrame, fragTexCoord);
 	// }
-	fragColor = render();
+	fragColor = renderRadiance();
 }

@@ -23,13 +23,13 @@ Renderer::Renderer() {
 	camera_view_sensitivity = 0.05;
 	last_mouse = dvec2(iResolution) / 2.0;
 
-	VAO_main = VAO();
-	VBO_main = VBO();
-	Faces = EBO();
-	buffer_tex_a = FBT();
+	VAO_main       = VAO();
+	VBO_main       = VBO();
+	Faces          = EBO();
+	buffer_tex_a   = FBT();
 	last_frame_tex = FBT();
-	FBO_main = FBO();
-	Buffer_A = Shader_Program("Buffer A");
+	FBO_main       = FBO();
+	Buffer_A   = Shader_Program("Buffer A");
 	Main_Image = Shader_Program("Main Image");
 
 	pause = false;
@@ -79,12 +79,18 @@ void Renderer::mouse_button_callback(GLFWwindow* window, int button, int action,
 	if (action == GLFW_PRESS) {
 		instance->keys[button] = true;
 		if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+			double xpos, ypos;
+			glfwGetCursorPos(window, &xpos, &ypos);
+			instance->last_mouse = dvec2(xpos, ypos);
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		}
 	}
 	else if (action == GLFW_RELEASE) {
 		instance->keys[button] = false;
 		if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+			double xpos, ypos;
+			glfwGetCursorPos(window, &xpos, &ypos);
+			instance->last_mouse = dvec2(xpos, ypos);
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 		}
 	}
@@ -202,11 +208,11 @@ void Renderer::Init() {
 			glUniform1ui(glGetUniformLocation(Buffer_A.ID, "iFrame"),      GLuint(iFrame));
 			glUniform2fv(glGetUniformLocation(Buffer_A.ID, "iResolution"), 1, value_ptr(vec2(iResolution)));
 
-			glUniform1f (glGetUniformLocation(Buffer_A.ID, "iCameraFocalLength"), GLfloat(camera.focal_length));
-			glUniform1f (glGetUniformLocation(Buffer_A.ID, "iCameraSensorWidth"), GLfloat(camera.sensor_width));
-			glUniform3fv(glGetUniformLocation(Buffer_A.ID, "iCameraPos"),   1, value_ptr(vec3(camera.position)));
-			glUniform3fv(glGetUniformLocation(Buffer_A.ID, "iCameraFront"), 1, value_ptr(vec3(camera.front_vec)));
-			glUniform3fv(glGetUniformLocation(Buffer_A.ID, "iCameraUp"),    1, value_ptr(vec3(camera.up_vec)));
+			glUniform1f (glGetUniformLocation(Buffer_A.ID, "iCameraFocalLength"), GLfloat(camera.Focal_Length));
+			glUniform1f (glGetUniformLocation(Buffer_A.ID, "iCameraSensorWidth"), GLfloat(camera.Sensor_Width));
+			glUniform3fv(glGetUniformLocation(Buffer_A.ID, "iCameraPos"),   1, value_ptr(vec3(camera.Pos)));
+			glUniform3fv(glGetUniformLocation(Buffer_A.ID, "iCameraFront"), 1, value_ptr(vec3(camera.Z_Vec)));
+			glUniform3fv(glGetUniformLocation(Buffer_A.ID, "iCameraUp"),    1, value_ptr(vec3(camera.Y_Vec)));
 			last_frame_tex.Bind(GL_TEXTURE0);
 
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
