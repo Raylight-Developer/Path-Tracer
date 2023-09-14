@@ -22,6 +22,8 @@ out vec4 fragColor;
 #define TWO_PI   6.28318530718
 #define PI       3.14159265359
 #define DEG_RAD  0.01745329252
+#define MAX_DIST 5000.0
+#define RAY_BOUNCES 4
 
 // CONSTANTS ---------------------------------------------------------------------------------------
 
@@ -82,8 +84,7 @@ struct Ray {
 };
 
 struct Hit {
-	Ray   Light_Ray;
-	float Distance;
+	float Ray_Length;
 	vec3  Hit_Normal;
 	vec3  Hit_Pos;
 };
@@ -122,9 +123,8 @@ void getRay(in vec2 uv, out vec3 ray_origin, out vec3 ray_direction) {
 	ray_direction = normalize(projection_center + (projection_u * uv.x) + (projection_v * uv.y) - iCameraPos);
 }
 
-float Spehere_Intersection(Ray ray, Sphere sphere) {
+float Spehere_Intersection(inout Ray ray, in Sphere sphere) {
 	vec3 s0_r0 = ray.Ray_Origin - sphere.Position;
-
 	float a = dot(ray.Ray_Direction, ray.Ray_Direction);
 	float b = 2.0 * dot(ray.Ray_Direction, s0_r0);
 	float c = dot(s0_r0, s0_r0) - (sphere.Radius * sphere.Radius);
@@ -137,13 +137,13 @@ float Spehere_Intersection(Ray ray, Sphere sphere) {
 
 Hit Scene_Intersection(in Ray ray) {
 	Hit hit_data;
+	hit_data.Ray_Length = MAX_DIST;
 
 	for (int i =0; i < 2; i++) {
-		float hit_ray_length = Spehere_Intersection(ray, Scene_Spheres[i]);
-		if (hit_ray_length < hit_data.Distance && hit_ray_length > 0.001) { // ZBuffer
-			hit_data.Distance = hit_ray_length;
-			hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * hit_ray_length;
-
+		float resultRayLength = Spehere_Intersection(ray, Scene_Spheres[i]);
+		if(resultRayLength < hit_data.Ray_Length && resultRayLength > 0.001) {
+			hit_data.Ray_Length = resultRayLength;
+			hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * resultRayLength;
 			hit_data.Hit_Normal = normalize(hit_data.Hit_Pos - Scene_Spheres[i].Position);
 		}
 	}
@@ -151,16 +151,25 @@ Hit Scene_Intersection(in Ray ray) {
 }
 
 vec4 render() {
-	Ray light_path;
-	getRay(fragCoord, light_path.Ray_Origin, light_path.Ray_Direction);
-	for (int i = 0; i < 2; i++) {
-		if (Spehere_Intersection(light_path, Scene_Spheres[i]) != -1.0) {
-			if (i == 0)
-				return vec4(1);
-			return vec4(1,0,0,1);
+	Ray ray;
+	getRay(fragCoord, ray.Ray_Origin, ray.Ray_Direction);
+
+	vec4 Color = vec4(0);
+	float Absorption = 1.0;
+
+	for(int i = 0; i < RAY_BOUNCES; i++) {
+		Hit hit_data = Scene_Intersection(ray);
+		if(hit_data.Ray_Length >= MAX_DIST) {
+			Color = vec4(0.5, 0.5, 0.9, 1) * Absorption; // Ambient Lighting
+			break;
 		}
+
+		Absorption *= 0.85; // Energy Loss
+
+		ray.Ray_Origin = ray.Ray_Origin + ray.Ray_Direction * hit_data.Ray_Length;
+		ray.Ray_Direction = normalize(reflect(ray.Ray_Direction, hit_data.Hit_Normal));
 	}
-	return vec4(0,0,0,1);
+	return Color;
 }
 
 // Main ---------------------------------------------------------------------------------------

@@ -20,7 +20,7 @@ Renderer::Renderer() {
 
 	keys = vector(348, false);
 	camera_move_sensitivity = 0.05;
-	camera_view_sensitivity = 0.025;
+	camera_view_sensitivity = 0.05;
 	last_mouse = dvec2(iResolution) / 2.0;
 
 	VAO_main = VAO();
@@ -70,7 +70,7 @@ void Renderer::cursor_position_callback(GLFWwindow* window, double xpos, double 
 
 		instance->last_mouse = dvec2(xpos, ypos);
 
-		instance->camera.rotate(xoffset * instance->camera_view_sensitivity, yoffset * instance->camera_view_sensitivity);
+		instance->camera.rotate(xoffset * instance->camera_view_sensitivity, yoffset * instance->camera_view_sensitivity * 2.5);
 	}
 }
 
