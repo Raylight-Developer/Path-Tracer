@@ -1,7 +1,7 @@
 #version 460 core
 
 uniform float iTime;
-uniform int iFrame;
+uniform uint iFrame;
 uniform vec2 iResolution;
 
 uniform sampler2D iRawFrame;

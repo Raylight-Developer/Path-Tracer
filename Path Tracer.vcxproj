@@ -158,6 +158,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="include\Camera.h" />
     <ClInclude Include="include\File_Watcher.h" />
     <ClInclude Include="include\FBT.h" />
     <ClInclude Include="include\FBO.h" />
@@ -171,6 +172,7 @@
     <ClInclude Include="include\Scene.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="source\Camera.cpp" />
     <ClCompile Include="source\Scene.cpp" />
     <ClCompile Include="source\Renderer.cpp" />
     <ClCompile Include="source\File_Watcher.cpp" />

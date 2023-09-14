@@ -27,10 +27,16 @@
 #include <map>
 #include <set>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 using namespace std;
+using namespace glm;
+
+#undef min
+#undef max
 
 #define PI          3.141592653589793
 #define TWO_PI      6.283185307179586

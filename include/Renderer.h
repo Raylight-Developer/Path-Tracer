@@ -2,6 +2,8 @@
 
 #include "Include.h"
 
+#include "Camera.h"
+
 #include "VAO.h"
 #include "VBO.h"
 #include "EBO.h"
@@ -13,20 +15,28 @@
 struct Renderer {
 	vector<GLfloat> vertices;
 	vector<GLuint> faces;
-	uint16_t iResolution_x;
-	uint16_t iResolution_y;
-	size_t iFrame;
+
 	double iTime;
-	bool pause = false;
-	bool frame_advance = false;
+	size_t iFrame;
+	uvec2 iResolution;
+	
+	Camera camera;
+
+	// Control Input Variables
+	vector<bool> keys;
+	double camera_sensitivity;
+	dvec2 last_mouse;
 
 	VAO VAO_main;
 	VBO VBO_main;
 	EBO Faces;
-	FBT buffer_tex_a, last_frame_tex;
+	FBT buffer_tex_a;
+	FBT last_frame_tex;
 	FBO FBO_main;
 	Shader_Program Buffer_A;
 	Shader_Program Main_Image;
+
+	bool pause;
 
 	Renderer();
 
@@ -34,5 +44,8 @@ struct Renderer {
 	void Init();
 
 	static void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+	static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
+	static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+	static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 	static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 };

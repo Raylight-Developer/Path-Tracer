@@ -2,5 +2,4 @@
 x64/
 external/vcpkg/
 enc_temp_folder/
-vcpkg_installed/
 external/x64-windows/
