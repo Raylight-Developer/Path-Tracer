@@ -24,7 +24,8 @@ struct Renderer {
 
 	// Control Input Variables
 	vector<bool> keys;
-	double camera_sensitivity;
+	double camera_move_sensitivity;
+	double camera_view_sensitivity;
 	dvec2 last_mouse;
 
 	VAO VAO_main;

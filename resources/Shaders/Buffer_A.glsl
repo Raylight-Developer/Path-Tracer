@@ -7,7 +7,7 @@ uniform vec2 iResolution;
 uniform float iCameraFocalLength;
 uniform float iCameraSensorWidth;
 uniform vec3  iCameraPos;
-uniform vec3  iCameraFwd;
+uniform vec3  iCameraFront;
 uniform vec3  iCameraUp;
 
 uniform sampler2D iLastFrame;
@@ -111,17 +111,15 @@ const Sphere Scene_Spheres[2] = Sphere[2](
 // FUNCTIONS ---------------------------------------------------------------------------------------
 
 void getRay(in vec2 uv, out vec3 ray_origin, out vec3 ray_direction) {
-	// CAMERA POSITION
-	ray_origin = iCameraPos;
-
 	uv = uv -0.5;
 	uv.x *= iResolution.x / iResolution.y;
 
-	vec3 projection_center = ray_origin + (iCameraFocalLength * iCameraFwd);
-	vec3 projection_u = normalize(cross(iCameraFwd, iCameraUp)) * iCameraSensorWidth;
-	vec3 projection_v = normalize(cross(projection_u, iCameraFwd)) * (iCameraSensorWidth / 1.0);
+	vec3 projection_center = iCameraPos + iCameraFocalLength * iCameraFront;
+	vec3 projection_u = normalize(cross(iCameraFront, iCameraUp)) * iCameraSensorWidth;
+	vec3 projection_v = normalize(cross(projection_u, iCameraFront)) * (iCameraSensorWidth / 1.0);
 
-	ray_direction = normalize(projection_center + (projection_u * uv.x) + (projection_v * uv.y) - ray_origin);
+	ray_origin = iCameraPos;
+	ray_direction = normalize(projection_center + (projection_u * uv.x) + (projection_v * uv.y) - iCameraPos);
 }
 
 float Spehere_Intersection(Ray ray, Sphere sphere) {

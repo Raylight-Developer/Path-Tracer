@@ -4,48 +4,52 @@
 
 struct Camera {
 	double
-		sensor_width,
-		focal_length;
+		focal_length,
+		sensor_width;
 
 	dvec3
 		position,
-		forward_vec,
+		euler_rot,
+		front_vec,
 		up_vec,
 		right_vec;
 
 	Camera() {
-		sensor_width = 0.05;
-		focal_length = 0.036;
-		position     = dvec3( 0, 0, 5);
-		forward_vec  = dvec3( 0, 0, -1);
-		up_vec       = dvec3( 0, 1,  0);
-		right_vec    = dvec3( 1, 0,  0);
+		focal_length = 0.05;
+		sensor_width = 0.036;
+		position  = dvec3(   0, 0,  5 );
+		euler_rot = dvec3( -90, 0,  0 );
+		front_vec = dvec3(   0, 0, -1 );
+		up_vec    = dvec3(   0, 1,  0 );
+		right_vec = dvec3(   1, 0,  0 );
 	};
 
-	void rotateLocalX(double i_angleDegrees) {
-		dmat4 rotation = rotate(dmat4(1.0), i_angleDegrees * DEG_RAD, right_vec);
-		forward_vec = dmat3(rotation) * forward_vec;
-		up_vec = cross(right_vec, forward_vec);
-		updateVectors();
+	void move(const double& i_x, const double& i_y, const double& i_z, const double& i_speed) {
+		position += i_x * i_speed * right_vec;
+		position += i_y * i_speed * up_vec;
+		position += i_z * i_speed * front_vec;
 	}
 
-	void rotateLocalY(double i_angleDegrees) {
-		dmat4 rotation = rotate(dmat4(1.0), i_angleDegrees * DEG_RAD, dvec3(0.0, 1.0, 0.0));
-		forward_vec = dmat3(rotation) * forward_vec;
-		right_vec = cross(forward_vec, up_vec);
-		updateVectors();
+	dmat4 GetViewMatrix() {
+		return lookAt(position, position + front_vec, up_vec);
 	}
 
-	void rotateLocalZ(double i_angleDegrees) {
-		dmat4 rotation = rotate(dmat4(1.0), i_angleDegrees * DEG_RAD, forward_vec);
-		right_vec = dmat3(rotation) * right_vec;
-		up_vec = cross(right_vec, forward_vec);
-		updateVectors();
+	void rotate(const double& i_yaw, const double& i_pitch) {
+		euler_rot += dvec3(i_yaw, i_pitch, 0);
+
+		if (euler_rot.y > 89.0) euler_rot.y = 89.0;
+		if (euler_rot.y < -89.0) euler_rot.y = -89.0;
+
+		updateCameraVectors();
 	}
 
-	void updateVectors() {
-		forward_vec = normalize(forward_vec);
-		right_vec = normalize(cross(forward_vec, up_vec));
-		up_vec = normalize(cross(right_vec, forward_vec));
+	void updateCameraVectors() {
+		front_vec = normalize(dvec3(
+			cos(euler_rot.x * DEG_RAD) * cos(euler_rot.y * DEG_RAD),
+			sin(euler_rot.y * DEG_RAD),
+			sin(euler_rot.x * DEG_RAD) * cos(euler_rot.y * DEG_RAD)
+		));
+		right_vec = normalize(cross(front_vec, dvec3(0, 1, 0)));
+		up_vec = normalize(cross(right_vec, front_vec));
 	}
 };
