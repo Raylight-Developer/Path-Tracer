@@ -20,13 +20,183 @@ out vec4 fragColor;
 
 // DEFINITIONS ---------------------------------------------------------------------------------------
 
-#define DIFFUSE 1
-#define MIRROR 2
-#define GLASS 3
-#define EMISSION 4
+#define TWO_PI   6.28318530718
+#define PI       3.14159265359
+#define DEG_RAD  0.01745329252
+#define MAX_DIST 50000.0
+#define RAY_BOUNCES 8
+#define SPP         2
 
-#define SPHERE_COUNT 9
-#define LIGHT_COUNT 1
+// CONSTANTS ---------------------------------------------------------------------------------------
+const int Quad_Face[4] = int[](1,2,0,1);
+// GLOBALS ---------------------------------------------------------------------------------------
+// GENERIC FUNCTIONS ---------------------------------------------------------------------------------------
+uvec4 white_noise_seed;
+uvec2 pixel;
+uvec4 hash(uvec4 seed) {
+	seed = seed * 1664525u + 1013904223u;
+	seed.x += seed.y*seed.w; seed.y += seed.z*seed.x; seed.z += seed.x*seed.y; seed.w += seed.y*seed.z;
+	seed = seed ^ (seed>>16u);
+	seed.x += seed.y*seed.w; seed.y += seed.z*seed.x; seed.z += seed.x*seed.y; seed.w += seed.y*seed.z;
+	return seed;
+}
+float rand1() { return float(hash(white_noise_seed).x)   / float(0xffffffffu); }
+vec2  rand2() { return vec2 (hash(white_noise_seed).xy)  / float(0xffffffffu); }
+vec3  rand3() { return vec3 (hash(white_noise_seed).xyz) / float(0xffffffffu); }
+vec4  rand4() { return vec4 (hash(white_noise_seed))     / float(0xffffffffu); }
+vec2 nrand2(float sigma, vec2 mean) {
+	vec2 Z = rand2();
+	return mean + sigma * sqrt(-2.0 * log(Z.x)) * vec2(cos(TWO_PI * Z.y), sin(TWO_PI * Z.y));
+}
+vec3 nrand3(float sigma, vec3 mean) {
+	vec4 Z = rand4();
+	return mean + sigma * sqrt(-2.0 * log(Z.xxy)) * vec3(cos(TWO_PI * Z.z), sin(TWO_PI * Z.z), cos(TWO_PI * Z.w));
+}
+void rng_initialize(vec2 pix, uint frame) {
+	pixel = uvec2(pix);
+	white_noise_seed = uvec4(pixel, frame, uint(pixel.x) + uint(pixel.y));
+}
+vec3 rgb_noise() {
+	return rand3();
+}
+vec3 white_noise() {
+	return vec3(rand1());
+}
+float cross2d( in vec2 a, in vec2 b ) { return a.x * b.y - a.y * b.x; }
+// STRUCTS ---------------------------------------------------------------------------------------
+struct Material {
+	float Diffuse_Gain;
+	vec3  Diffuse_Color;
+	float Emissive_Gain;
+	vec3  Emissive_Color;
+	float Specular_Gain;
+	float Roughness;
+	float Refraction;
+	float IOR;
+	float Absorption;
+};
+struct Sun_Light {
+	float Intensity;
+	vec3  Color;
+	vec3  Direction;
+};
+struct Ray {
+	vec3  Ray_Origin;
+	vec3  Ray_Direction;
+};
+struct Hit {
+	float Ray_Length;
+	vec3  Hit_New_Dir;
+	vec3  Hit_Pos;
+	int   Hit_Obj;
+	Material Hit_Mat;
+};
+struct Sphere {
+	vec3     Position;
+	float    Diameter;
+	Material Mat;
+};
+struct Quad {
+	vec3 v0;
+	vec3 v1;
+	vec3 v2;
+	vec3 v3;
+	Material Mat;
+};
+struct Triangle {
+	vec3     Position_A;
+	vec3     Position_B;
+	vec3     Position_C;
+	Material Mat;
+};
+// SCENE ---------------------------------------------------------------------------------------
+const Sphere Scene_Spheres[9] = Sphere[9](
+	Sphere(vec3( 1   , -0.5   , -3.2    ), 0.5, Material(0, vec3(1  , 1  , 1  )  , 0 , vec3(1), 0, 0.05, 1 , 1.5, 0.95)), // Glass
+	Sphere(vec3( 0   , -0.5   , -5.2    ), 0.5, Material(1, vec3(0.1, 0.5, 0.9)  , 0 , vec3(1), 0, 0   , 0 , 1.1, 1.0 )),
+	Sphere(vec3(-1   , -0.5   , -4.2    ), 0.5, Material(0, vec3(1  , 1  , 1  )  , 0 , vec3(1), 1, 0   , 0 , 1.3, 1.0 )), // Mirror
+	Sphere(vec3( 0   ,  1.9   , -4.5    ), 0.4, Material(0, vec3(1  , 1  , 1  )  , 5 , vec3(1), 0, 0   , 0 , 1.1, 1.0 )), // Emmisive
+	Sphere(vec3( 0   , -1000  , -4.0    ), 999, Material(1, vec3(1  , 1  , 1  )  , 0 , vec3(1), 0, 0.25, 0 , 1.1, 0.85)),
+	Sphere(vec3( 1001,  0     ,  0      ), 999, Material(1, vec3(0  , 1  , 0  )  , 0 , vec3(1), 0, 0.25, 0 , 1.1, 0.85)),
+	Sphere(vec3(-1001,  0     ,  0      ), 999, Material(1, vec3(1  , 0  , 0  )  , 0 , vec3(1), 0, 0.25, 0 , 1.1, 0.85)),
+	Sphere(vec3( 0   ,  0.5   , -1005.5 ), 999, Material(1, vec3(1  , 1  , 1  )  , 0 , vec3(1), 0, 0.25, 0 , 1.1, 0.85)),
+	Sphere(vec3( 0   ,  1001.7,  0      ), 999, Material(1, vec3(1  , 1  , 1  )  , 0 , vec3(1), 0, 0.25, 0 , 1.1, 0.85))
+);
+
+const Quad Scene_Quads[1] = Quad[1](
+	Quad(vec3( -10, 0, -10 ), vec3( 10, 0, -10 ), vec3( 10, 0, 10 ), vec3( -10, 0, 10 ), Material(1, vec3(0.5), 0, vec3(1), 0, 0.25 , 0 , 1 , 0.85)) // Floor
+);
+// INTERSECTIONS ---------------------------------------------------------------------------------------
+float Spehere_Intersection(in Ray ray, in Sphere sphere) {
+	ray.Ray_Origin = ray.Ray_Origin - sphere.Position;
+	
+	float b = dot(ray.Ray_Origin, ray.Ray_Direction);
+	float delta = b * b - dot(ray.Ray_Origin, ray.Ray_Origin) + sphere.Diameter * sphere.Diameter;
+	
+	if (delta < 0)
+		return -1;
+
+	float sqdelta = sqrt(delta);
+
+	if (-b - sqdelta > 0.001)
+		return -b - sqdelta;
+	else if (-b + sqdelta > 0.001)
+		return -b + sqdelta;
+	return -1;
+}
+vec3 Quad_Intersection(in Ray ray, in Quad quad) {
+	vec3 a = quad.v1 - quad.v0;
+	vec3 b = quad.v3 - quad.v0;
+	vec3 c = quad.v2 - quad.v0;
+	vec3 p = ray.Ray_Origin - quad.v0;
+	vec3 nor = cross(a,b);
+	float t = -dot(p, nor)/dot(ray.Ray_Direction, nor);
+	if( t<0.0 ) return vec3(-1.0);
+	vec3 pos = p + t * ray.Ray_Direction;
+	vec3 mor = abs(nor);
+	int id;
+	if (mor.x > mor.y && mor.x > mor.z ) id = 0;
+	else if (mor.y > mor.z) id = 1;
+	else id = 2;
+	int idu = Quad_Face[id];
+	int idv = Quad_Face[id+1];
+	vec2 kp = vec2( pos[idu], pos[idv] );
+	vec2 ka = vec2( a[idu], a[idv] );
+	vec2 kb = vec2( b[idu], b[idv] );
+	vec2 kc = vec2( c[idu], c[idv] );
+	vec2 kg = kc-kb-ka;
+	float k0 = cross2d( kp, kb );
+	float k2 = cross2d( kc-kb, ka );
+	float k1 = cross2d( kp, kg ) - nor[id];
+	
+	// if edges are parallel, this is a linear equation
+	float u, v;
+	if( abs(k2) < 0.00001 ) {
+		v = -k0 / k1;
+		u = cross2d( kp, ka ) / k1;
+	}
+	else {
+		// otherwise, it's a quadratic
+		float w = k1 * k1 - 4.0 * k0 * k2;
+		if( w<0.0 ) {
+			return vec3(-1.0);
+		}
+		w = sqrt( w );
+		float ik2 = 1.0 / (2.0 * k2);
+		v = (-k1 - w)*ik2;
+		if( v < 0.0 || v > 1.0 ) {
+			v = (-k1 + w) * ik2;
+			u = (kp.x - ka.x*v)/(kb.x + kg.x*v);
+		}
+	}
+	
+	if( u<0.0 || u>1.0 || v<0.0 || v>1.0) {
+		return vec3(-1.0);
+	}
+	else {
+		return vec3( t, u, v );
+	}
+}
+// FUNCTIONS ---------------------------------------------------------------------------------------
 
 #define INFINITY 5000.
 #define M_PI 3.1415926535897932384626433832795
@@ -34,14 +204,6 @@ out vec4 fragColor;
 
 #define SAMPLES 1
 #define MAX_BOUNCES 8
-
-struct Sphere{
-	vec3 p; //geometric information pos: g.xyz radius: g.w
-	float r; //radius
-	vec3 c; //color of the sphere
-	float s; //roughness or ior
-	int m; //material
-};
 
 float hash1(inout float seed)
 {
@@ -66,86 +228,38 @@ float hash12(vec2 p)
 	return fract((p3.x + p3.y) * p3.z);
 }
 
-vec2 uniform_disk_sample(inout float seed) //in polar coordinates theta, r
-{
+vec2 uniform_disk_sample(inout float seed) {
 	vec2 p = hash2(seed);
 	return vec2(2. * M_PI * p.x, sqrt(p.y));
 }
 
-vec3 cosine_weighted_hemi_sample(inout float seed)
-{
+vec3 cosine_weighted_hemi_sample(inout float seed) {
 	vec2 p = uniform_disk_sample(seed);
 	return normalize(vec3(sin(p.x) * p.y, cos(p.x) * p.y, sqrt(1. - p.y * p.y)));
 }
 
+Hit intersect_scene(const in Ray ray, inout bool inside) {
+	Hit hit_data;
+	hit_data.Ray_Length = MAX_DIST;
 
-Sphere spheres[SPHERE_COUNT] = Sphere[SPHERE_COUNT](
-	Sphere(vec3(1., -0.5, -3.2), .5,vec3(1., 1., 1.), 1.45, GLASS),
-	Sphere(vec3(0., -0.5, -5.2), .5,vec3(0.1, 0.5, 0.9), 1.45, DIFFUSE),
-	Sphere(vec3(-1., -0.5, -4.2), .5,vec3(1., 1., 1.), 1.45, MIRROR),
-	Sphere(vec3(0., 1.9, -4.5), .4,vec3(1., 1, 1.) * 3.6, 0., EMISSION),
-	Sphere(vec3(0., -1000, -4.), 999.,vec3(1, 1, 1), 0., DIFFUSE),
-	Sphere(vec3(1001., 0., 0.), 999.,vec3(.1, 0.9, 0.1), 0., DIFFUSE),
-	Sphere(vec3(-1001., 0., 0.), 999.,vec3(0.9, .1, 0.1), 0., DIFFUSE),
-	Sphere(vec3(0., 0.5, -1005.5), 999.,vec3(.9, 0.9, 0.9), 0., DIFFUSE),
-	Sphere(vec3(0., 1001.7, 0.), 999.,vec3(.9, 0.9, 0.9), 0., DIFFUSE)
-);
-int lights[LIGHT_COUNT] = int[LIGHT_COUNT] (3);//index of the spheres to be directly sampled
-//#endif
-
-
-struct Ray{
-	vec3 o;//origin
-	vec3 d;//direction
-};
-
-	
-float intersect_sphere(in Ray r, in Sphere s)
-{
-	r.o = r.o - s.p; //translate everything so that the sphere is centered
-	
-	float b = dot(r.o, r.d);
-	float delta = b * b - dot(r.o, r.o) + s.r * s.r;
-	
-	if (delta < 0.) return -1.;
-	
-	float sqdelta = sqrt(delta);
-	
-	if (-b - sqdelta > 0.001) return -b - sqdelta; //epsilon to avoid self intersection
-	else if (-b + sqdelta > 0.001) return -b + sqdelta;
-	return -1.;
-}
-
-bool intersect_scene(const in Ray r, out float t, out int idx, out Ray hit, out bool inside)
-{
-	t = INFINITY;
-	idx = -1;
-	for (int i = 0; i < SPHERE_COUNT; i++){
-		float n_t = intersect_sphere(r, spheres[i]);
-		if (n_t > 0. && n_t < t){
-			t = n_t;
-			idx = i;
+	for (int i =0; i < 9; i++) {
+		float resultRayLength = Spehere_Intersection(ray, Scene_Spheres[i]);
+		if(resultRayLength < hit_data.Ray_Length && resultRayLength > 0.001) {
+			hit_data.Ray_Length = resultRayLength;
+			hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * resultRayLength;
+			hit_data.Hit_New_Dir = normalize(hit_data.Hit_Pos - Scene_Spheres[i].Position);
+			hit_data.Hit_Mat = Scene_Spheres[i].Mat;
+			hit_data.Hit_Obj = i;
+			inside = distance(ray.Ray_Origin, Scene_Spheres[i].Position) <= Scene_Spheres[i].Diameter;
+			if (inside) hit_data.Hit_New_Dir *= -1.0;
 		}
 	}
-	if  (t == INFINITY){
-		return false;
-	}
-	else{
-		hit.o = r.o +  r.d  * t; //this point might be beneath the surface of the sphere
-		hit.d = normalize(hit.o - spheres[idx].p);
-		inside = distance(r.o, spheres[idx].p) <= spheres[idx].r;
-		hit.d *= inside ? -1. : 1.; //flip the normal if inside the sphere
-		//hit.o += hit.d * 0.1; //make sure the point does not go through
-		return true;
-	}
+	return hit_data;
 }
 
-vec3 cone_uniform(in float theta, in vec3 dir, inout float seed)
-{
+vec3 cone_uniform(in float theta, in vec3 dir, inout float seed) {
 	
-	vec3 left = cross(dir, vec3(0., 1., 0.));//error for vertical vectors
-	//vec3 left2 = cross(dir, vec3(0., 0., 1.));
-	//left = length(left) > length(left2) ? normalize(left) : normalize(left2);
+	vec3 left = cross(dir, vec3(0., 1., 0.));
 	left = length(left) > 0.1 ? normalize(left) : normalize(cross(dir, vec3(0., 0., 1.)));
 	vec3 up = normalize(cross(dir, left));
 	
@@ -161,24 +275,23 @@ vec3 cone_uniform(in float theta, in vec3 dir, inout float seed)
 
 }
 
-vec3 sample_light(const in Ray p, in int light_idx, inout float seed, out float inv_prob) //return the radiance already scaled by the pdf
+vec3 sample_light(const in Hit hit_data, in int object, inout float seed, out float inv_prob) //return the radiance already scaled by the pdf
 {
-	Sphere l = spheres[light_idx];
-	vec3 dir = normalize(l.p - p.o);
-	float dist = length(l.p - p.o);
-	float theta = asin(l.r / dist);
-	Ray r = Ray(p.o + p.d * 0.0001, cone_uniform(theta, dir, seed)); //epsilon to make sure it self intersects
-	
-	float t;
-	int idx;
-	Ray hit;
-	inv_prob = (2. * (1. - cos(theta)));
+	Sphere l = Scene_Spheres[object];
+	vec3 dir = normalize(l.Position - hit_data.Hit_Pos);
+	float dist = length(l.Position - hit_data.Hit_Pos);
+	float theta = asin(l.Diameter / dist);
+	Ray r = Ray(hit_data.Hit_Pos + hit_data.Hit_New_Dir * 0.0001, cone_uniform(theta, dir, seed)); //epsilon to make sure it self intersects
+
 	bool inside;
-	intersect_scene(r, t, idx, hit, inside);
-	if (idx == light_idx){
-		return l.c.xyz * max(0., dot(r.d, p.d)) * inv_prob;
+
+	inv_prob = (2. * (1. - cos(theta)));
+
+	Hit hit = intersect_scene(r, inside);
+	if (hit.Hit_Mat.Emissive_Gain > 0 && hit.Hit_Obj == object) {
+		return l.Mat.Emissive_Color * l.Mat.Emissive_Gain * max(0., dot(r.Ray_Direction, hit_data.Hit_New_Dir)) * inv_prob;
 	}
-	return vec3(0., 0., 0.);
+	return vec3(0);
 }
 
 float snell (float sin_theta, float iori, float iort)
@@ -195,71 +308,64 @@ float fresnel(float iori, float iort, float cosi, float cost){
 }
 
 vec3 get_radiance(Ray r, inout float seed){
-	vec3 rad = vec3(0.,0.,0.);
-	float t;
-	int idx;
-	Ray hit;
-	vec3 brdf = vec3(1.,1.,1.);
+	vec3 rad = vec3(0);
+	vec3 brdf = vec3(1);
 	bool delta = true;
 	bool inside = false;
 
 	for (int b = 0; b < MAX_BOUNCES; b++){
-		if(!intersect_scene(r, t, idx, hit, inside)){
-			return rad + brdf * vec3(0.0, 0.0, 0.0); //return sky color;
+		Hit hit_data = intersect_scene(r, inside);
+
+		if (hit_data.Ray_Length >= MAX_DIST) {
+			return rad + brdf * vec3(0.0, 0.0, 0.0); // MISS;
 		}
 		float prob = 0.;
-		int mat = spheres[idx].m;
-		if (mat == DIFFUSE){
+		if (hit_data.Hit_Mat.Diffuse_Gain > 0){ // DIFFUSE
 			delta = false;
-			vec3 tangent = normalize(cross(r.d, hit.d));
-			vec3 bitangent = normalize(cross(hit.d, tangent));
+			vec3 tangent = normalize(cross(r.Ray_Direction, hit_data.Hit_New_Dir));
+			vec3 bitangent = normalize(cross(hit_data.Hit_New_Dir, tangent));
 			vec3 nr = cosine_weighted_hemi_sample(seed);;
-			r.d = normalize(tangent * nr.x + bitangent * nr.y + hit.d * nr.z);
-			brdf *= spheres[idx].c.xyz;
-			for (int k = 0; k < LIGHT_COUNT; k++){
-				vec3 acc = brdf * sample_light(hit, lights[k], seed, prob);
+			r.Ray_Direction = normalize(tangent * nr.x + bitangent * nr.y + hit_data.Hit_New_Dir * nr.z);
+			brdf *= hit_data.Hit_Mat.Diffuse_Color;
+			for (int i = 0; i < 9; i++) {
+				vec3 acc = brdf * sample_light(hit_data, i, seed, prob);
 				rad += acc;
 			}
-			
-			//return rad;
 		}
-		else if (mat == MIRROR){
+		else if (hit_data.Hit_Mat.Specular_Gain > 0){ // SPECULAR
 			delta = true;
-			r.d = reflect(r.d, hit.d);
-			brdf *= spheres[idx].c.xyz;
+			r.Ray_Direction = reflect(r.Ray_Direction, hit_data.Hit_New_Dir);
+			brdf *= hit_data.Hit_Mat.Diffuse_Color;
 		}
-		else if (mat == GLASS){
+		else if (hit_data.Hit_Mat.Refraction > 0){ // GLASS
 			delta = true;
-			float cosi = abs(dot(hit.d, r.d));
+			float cosi = abs(dot(hit_data.Hit_New_Dir, r.Ray_Direction));
 			float sini = sqrt(1. - cosi * cosi);
-			float iort = spheres[idx].s;
-			float iori = 1.;
+			float iort = hit_data.Hit_Mat.IOR;
+			float iori = 1.0;
 			if (inside){
 				iori = iort;
-				iort = 1.;
+				iort = 1.0;
 			}
 			float sint = snell(sini, iori, iort);
-			float cost = sqrt(1. - sint * sint);
+			float cost = sqrt(1.0 - sint * sint);
 			float frsn = fresnel(iori, iort, cosi, cost);
 
-			if (hash1(seed) > frsn){//ray transmitted
-				vec3 bitangent = normalize(r.d - dot(hit.d, r.d) * hit.d);
-				r.d = normalize(bitangent * sint - cost * hit.d);
-				brdf *= spheres[idx].c;
+			if (hash1(seed) > frsn){
+				vec3 bitangent = normalize(r.Ray_Direction - dot(hit_data.Hit_New_Dir, r.Ray_Direction) * hit_data.Hit_New_Dir);
+				r.Ray_Direction = normalize(bitangent * sint - cost * hit_data.Hit_New_Dir);
+				brdf *= hit_data.Hit_Mat.Diffuse_Color;
 			}
-			else{ //ray reflected
-				r.d = reflect(r.d, hit.d);
+			else{
+				r.Ray_Direction = reflect(r.Ray_Direction, hit_data.Hit_New_Dir);
 			}
-			
 		}
-		else if (mat == EMISSION){
-			return rad + brdf * (delta ? spheres[idx].c.xyz : vec3(0.,0.,0.));
+		else if (hit_data.Hit_Mat.Emissive_Gain > 0) { // EMISSIVE
+			return rad + brdf * (delta ? hit_data.Hit_Mat.Diffuse_Color : vec3(0));
 		}
-		r.o = hit.o + r.d * 0.001;
-		//if(length(brdf) < 0.1) return rad;// or something like this, also considering lights
+		r.Ray_Origin = hit_data.Hit_Pos + r.Ray_Direction * 0.001;
 	}
 	return rad;
-	
 }
 
 Ray ray_from_camera(vec2 uv) {
@@ -271,7 +377,6 @@ Ray ray_from_camera(vec2 uv) {
 
 // Main ---------------------------------------------------------------------------------------
 void main() {
-	spheres[lights[0]].p.xz ;
 	vec2 uv0 = gl_FragCoord.xy/iResolution.xy;
 	
 	vec3 col;
