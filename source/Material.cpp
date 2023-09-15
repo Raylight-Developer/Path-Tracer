@@ -16,7 +16,7 @@ Material::Material() {
 	Subsurface_Radius     = 0.1;
 	Subsurface_IOR        = 1.3;
 	Subsurface_Anisotropy = 0;
-	Emmisive_Gain         = 0;
+	Emissive_Gain         = 0;
 	Iridescent_Gain       = 0;
 	Iridescent_Roughness  = 0.1;
 	Clearcoat_Gain        = 0;
@@ -29,7 +29,7 @@ Material::Material() {
 	Refractive_Color      = dvec3(1, 1, 1);
 	Reflective_Color      = dvec3(1, 1, 1);
 	Subsurface_Color      = dvec3(1, 1, 1);
-	Emmisive_Color        = dvec3(1, 1, 1);
+	Emissive_Color        = dvec3(1, 1, 1);
 	Iridescent_Color_A    = dvec3(1, 1, 1);
 	Iridescent_Color_B    = dvec3(1, 1, 1);
 	Clearcoat_Color       = dvec3(1, 1, 1);

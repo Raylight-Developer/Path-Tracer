@@ -23,7 +23,7 @@ struct Material {
 		Subsurface_IOR,
 		Subsurface_Anisotropy,
 
-		Emmisive_Gain,
+		Emissive_Gain,
 
 		Iridescent_Gain,
 		Iridescent_Roughness,
@@ -45,7 +45,7 @@ struct Material {
 
 		Subsurface_Color,
 
-		Emmisive_Color,
+		Emissive_Color,
 
 		Iridescent_Color_A,
 		Iridescent_Color_B,

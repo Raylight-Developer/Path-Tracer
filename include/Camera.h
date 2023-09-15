@@ -17,7 +17,7 @@ struct Camera {
 	Camera() {
 		Focal_Length = 0.05;
 		Sensor_Width = 0.036;
-		Pos   = dvec3(   0, 0.5,  5 );
+		Pos   = dvec3(   1, 2,  8 );
 		Rot   = dvec3( -90, 0,  0 );
 		X_Vec = dvec3(   1, 0,  0 );
 		Y_Vec = dvec3(   0, 1,  0 );

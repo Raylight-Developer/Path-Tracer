@@ -14,7 +14,7 @@ Renderer::Renderer() {
 
 	iTime = 0.0;
 	iFrame = 0;
-	iResolution = uvec2(860, 540);
+	iResolution = uvec2(1920, 1080);
 
 	camera = Camera();
 	camera_change = false;
@@ -45,7 +45,7 @@ void Renderer::recompile() {
 	FBO_main.Unbind();
 	last_frame_tex.Resize(iResolution);
 
-	camera = Camera();
+	//camera = Camera();
 	camera_change = true;
 	iFrame = 0;
 	iTime = glfwGetTime();
@@ -75,6 +75,7 @@ void Renderer::cursor_position_callback(GLFWwindow* window, double xpos, double 
 
 		instance->camera.rotate(xoffset * instance->camera_view_sensitivity, yoffset * instance->camera_view_sensitivity);
 		instance->camera_change = true;
+		instance->iFrame = 0;
 	}
 }
 
@@ -104,10 +105,12 @@ void Renderer::scroll_callback(GLFWwindow* window, double xoffset, double yoffse
 	Renderer* instance = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
 	if (yoffset < 0) {
 		instance->camera_change = true;
+		instance->iFrame = 0;
 		instance->camera_move_sensitivity /= 1.1;
 	}
 	if (yoffset > 0) {
 		instance->camera_change = true;
+		instance->iFrame = 0;
 		instance->camera_move_sensitivity *= 1.1;
 	}
 }
@@ -189,31 +192,37 @@ void Renderer::Init() {
 
 	glClearColor(0, 0, 0, 1);
 	while (!glfwWindowShouldClose(window)) {
-		if (!pause || iFrame < 30) {
+		if (!pause) {
 			// Input Handling
 			if (keys[GLFW_KEY_D]) {
 				camera.move( 1, 0, 0, camera_move_sensitivity);
 				camera_change = true;
+				iFrame = 0;
 			}
 			if (keys[GLFW_KEY_A]) {
 				camera.move(-1, 0, 0, camera_move_sensitivity);
 				camera_change = true;
+				iFrame = 0;
 			}
 			if (keys[GLFW_KEY_E] || keys[GLFW_KEY_SPACE]) {
 				camera.move(0,  1, 0, camera_move_sensitivity);
 				camera_change = true;
+				iFrame = 0;
 			}
 			if (keys[GLFW_KEY_Q] || keys[GLFW_KEY_LEFT_CONTROL]) {
 				camera.move(0, -1, 0, camera_move_sensitivity);
 				camera_change = true;
+				iFrame = 0;
 			}
 			if (keys[GLFW_KEY_W]) {
 				camera.move(0, 0,  1, camera_move_sensitivity);
 				camera_change = true;
+				iFrame = 0;
 			}
 			if (keys[GLFW_KEY_S]) {
 				camera.move(0, 0, -1, camera_move_sensitivity);
 				camera_change = true;
+				iFrame = 0;
 			}
 
 			double Time = glfwGetTime() - iTime;
