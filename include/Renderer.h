@@ -21,6 +21,7 @@ struct Renderer {
 	uvec2 iResolution;
 	
 	Camera camera;
+	bool camera_change;
 
 	// Control Input Variables
 	vector<bool> keys;

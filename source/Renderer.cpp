@@ -17,6 +17,7 @@ Renderer::Renderer() {
 	iResolution = uvec2(860, 540);
 
 	camera = Camera();
+	camera_change = false;
 
 	keys = vector(348, false);
 	camera_move_sensitivity = 0.05;
@@ -71,6 +72,7 @@ void Renderer::cursor_position_callback(GLFWwindow* window, double xpos, double 
 		instance->last_mouse = dvec2(xpos, ypos);
 
 		instance->camera.rotate(xoffset * instance->camera_view_sensitivity, yoffset * instance->camera_view_sensitivity * 2.5);
+		instance->camera_change = true;
 	}
 }
 
@@ -99,9 +101,11 @@ void Renderer::mouse_button_callback(GLFWwindow* window, int button, int action,
 void Renderer::scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 	Renderer* instance = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
 	if (yoffset < 0) {
+		instance->camera_change = true;
 		instance->camera_move_sensitivity /= 1.1;
 	}
 	if (yoffset > 0) {
+		instance->camera_change = true;
 		instance->camera_move_sensitivity *= 1.1;
 	}
 }
@@ -185,18 +189,30 @@ void Renderer::Init() {
 	while (!glfwWindowShouldClose(window)) {
 		if (!pause) {
 			// Input Handling
-			if (keys[GLFW_KEY_D])
-				camera.move( 1, 0, 0, camera_move_sensitivity);
-			if (keys[GLFW_KEY_A])
+			if (keys[GLFW_KEY_D]) {
+				camera.move(1, 0, 0, camera_move_sensitivity);
+				camera_change = true;
+			}
+			if (keys[GLFW_KEY_A]) {
 				camera.move(-1, 0, 0, camera_move_sensitivity);
-			if (keys[GLFW_KEY_E] || keys[GLFW_KEY_SPACE])
-				camera.move(0,  1, 0, camera_move_sensitivity);
-			if (keys[GLFW_KEY_Q] || keys[GLFW_KEY_LEFT_CONTROL])
+				camera_change = true;
+			}
+			if (keys[GLFW_KEY_E] || keys[GLFW_KEY_SPACE]) {
+				camera.move(0, 1, 0, camera_move_sensitivity);
+				camera_change = true;
+			}
+			if (keys[GLFW_KEY_Q] || keys[GLFW_KEY_LEFT_CONTROL]) {
 				camera.move(0, -1, 0, camera_move_sensitivity);
-			if (keys[GLFW_KEY_W])
-				camera.move(0, 0,  1, camera_move_sensitivity);
-			if (keys[GLFW_KEY_S])
+				camera_change = true;
+			}
+			if (keys[GLFW_KEY_W]) {
+				camera.move(0, 0, 1, camera_move_sensitivity);
+				camera_change = true;
+			}
+			if (keys[GLFW_KEY_S]) {
 				camera.move(0, 0, -1, camera_move_sensitivity);
+				camera_change = true;
+			}
 
 			double Time = glfwGetTime() - iTime;
 			FBO_main.Bind();
@@ -213,6 +229,7 @@ void Renderer::Init() {
 			glUniform3fv(glGetUniformLocation(Buffer_A.ID, "iCameraPos"),   1, value_ptr(vec3(camera.Pos)));
 			glUniform3fv(glGetUniformLocation(Buffer_A.ID, "iCameraFront"), 1, value_ptr(vec3(camera.Z_Vec)));
 			glUniform3fv(glGetUniformLocation(Buffer_A.ID, "iCameraUp"),    1, value_ptr(vec3(camera.Y_Vec)));
+			glUniform1i (glGetUniformLocation(Buffer_A.ID, "iCameraChange"), camera_change);
 			last_frame_tex.Bind(GL_TEXTURE0);
 
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -232,6 +249,7 @@ void Renderer::Init() {
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 			iFrame++;
+			camera_change = false;
 		}
 		glfwSwapBuffers(window);
 		glfwPollEvents();

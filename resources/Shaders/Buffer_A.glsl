@@ -9,6 +9,7 @@ uniform float iCameraSensorWidth;
 uniform vec3  iCameraPos;
 uniform vec3  iCameraFront;
 uniform vec3  iCameraUp;
+uniform bool  iCameraChange;
 
 uniform sampler2D iLastFrame;
 
@@ -259,6 +260,7 @@ vec4 renderRadiance() {
 	getRay(fragCoord, ray.Ray_Origin, ray.Ray_Direction);
 
 	vec3 Color = vec3(0);
+	vec3 Accumulation = vec3(1);
 	float Absorption = 1.0;
 	float Bounces = 1;
 
@@ -270,12 +272,13 @@ vec4 renderRadiance() {
 		}
 
 		if (hit_data.Hit_Mat.Diffuse_Gain == 1) {
-			Color += hit_data.Hit_Mat.Diffuse_Color * hit_data.Hit_Mat.Emmisive_Gain * Absorption * 0.05;
+			Accumulation *= hit_data.Hit_Mat.Diffuse_Color;
+			Color += Accumulation * hit_data.Hit_Mat.Emmisive_Gain;
 			ray.Ray_Direction = normalize(reflect(ray.Ray_Direction, hit_data.Hit_Normal) + rand3() * hit_data.Hit_Mat.Roughness);
 		}
 
 		if (hit_data.Hit_Mat.Specular_Gain > 0 && hit_data.Hit_Mat.Refraction > 0) {
-			Color += hit_data.Hit_Mat.Diffuse_Color * hit_data.Hit_Mat.Emmisive_Gain * Absorption * 0.05;
+			Color += Accumulation * hit_data.Hit_Mat.Emmisive_Gain;
 			if (rand1() > 0.5) {
 				ray.Ray_Direction = normalize(reflect(ray.Ray_Direction, hit_data.Hit_Normal) + rand3() * hit_data.Hit_Mat.Roughness);
 			}
@@ -285,12 +288,12 @@ vec4 renderRadiance() {
 		}
 
 		else if (hit_data.Hit_Mat.Specular_Gain > 0) {
-			Color += hit_data.Hit_Mat.Diffuse_Color * hit_data.Hit_Mat.Emmisive_Gain * Absorption * 0.05;
+			Color += Accumulation * hit_data.Hit_Mat.Emmisive_Gain;
 			ray.Ray_Direction = normalize(reflect(ray.Ray_Direction, hit_data.Hit_Normal) + rand3() * hit_data.Hit_Mat.Roughness);
 		}
 
 		else if (hit_data.Hit_Mat.Refraction > 0) {
-			Color += hit_data.Hit_Mat.Diffuse_Color * hit_data.Hit_Mat.Emmisive_Gain * Absorption * 0.05;
+			Color += Accumulation * hit_data.Hit_Mat.Emmisive_Gain;
 			ray.Ray_Direction = normalize(refract(ray.Ray_Direction, hit_data.Hit_Normal, hit_data.Hit_Mat.IOR) + rand3() * hit_data.Hit_Mat.Roughness);
 		}
 
@@ -309,13 +312,16 @@ vec4 renderRadiance() {
 void main() {
 	rng_initialize(gl_FragCoord.xy, iFrame);
 
-	if (iFrame <= 1) {
+	vec4 renderPass = vec4(0);
+
+	if (iFrame <= 1 || iCameraChange) {
 		fragColor = renderRadiance();
 	}
 	else {
-		fragColor = texture(iLastFrame, fragTexCoord);
+		vec4 lastFrame = texture(iLastFrame, fragTexCoord);
+		for(int i = 0; i < SPP; i++) {
+			renderPass += renderRadiance();
+		}
+		fragColor = ( lastFrame * float(iFrame) + renderPass ) / (float(iFrame) + 1.0);
 	}
-	//for(int i = 0; i < SPP; i++) {
-		fragColor = renderRadiance();
-	//}
 }
