@@ -22,10 +22,13 @@ out vec4 fragColor;
 #define TWO_PI   6.28318530718
 #define PI       3.14159265359
 #define DEG_RAD  0.01745329252
-#define MAX_DIST 5000.0
-#define RAY_BOUNCES 4
+#define MAX_DIST 50000.0
+#define RAY_BOUNCES 8
+#define SPP         2
 
 // CONSTANTS ---------------------------------------------------------------------------------------
+
+const int Quad_Face[4] = int[](1,2,0,1);
 
 // GLOBALS ---------------------------------------------------------------------------------------
 
@@ -68,6 +71,8 @@ vec3 white_noise() {
 	return vec3(rand1());
 }
 
+float cross2d( in vec2 a, in vec2 b ) { return a.x * b.y - a.y * b.x; }
+
 // STRUCTS ---------------------------------------------------------------------------------------
 
 struct Material {
@@ -78,7 +83,6 @@ struct Material {
 	float Specular_Gain;
 	float Roughness;
 	float Refraction;
-	float Reflection;
 	float IOR;
 	float Absorption;
 };
@@ -103,7 +107,15 @@ struct Hit {
 
 struct Sphere {
 	vec3     Position;
-	float    Radius;
+	float    Diameter;
+	Material Mat;
+};
+
+struct Quad {
+	vec3 v0;
+	vec3 v1;
+	vec3 v2;
+	vec3 v3;
 	Material Mat;
 };
 
@@ -117,10 +129,91 @@ struct Triangle {
 // SCENE ---------------------------------------------------------------------------------------
 
 const Sphere Scene_Spheres[3] = Sphere[3](
-	Sphere(vec3(  1.25, 0.0, -2.5 ), 1.25, Material(1, vec3(0,0,1), 0, vec3(1), 0, 0.5 , 0 ,0 , 1  , 0.85)),
-	Sphere(vec3(   0.0, 0.0, -7.5 ), 1.0 , Material(1, vec3(1,1,1), 0, vec3(1), 1, 0.25, 1 ,1 , 1.5, 0.95)),
-	Sphere(vec3( -0.75, 0.0,  0.0 ), 1.5 , Material(1, vec3(1,1,1), 1, vec3(1), 0, 0   , 0 ,0 , 1  , 1.0 ))
+	Sphere(vec3( 0.0, 2.05, -4.0 ), 2.0 , Material(1, vec3(1,0,1)  , 0 , vec3(1), 0, 0.25, 0 , 1.1, 0.85)), // Diffuse
+	Sphere(vec3( 0.0, 1.55,  0.0 ), 1.5 , Material(1, vec3(1,1,1)  , 50, vec3(1), 0, 0   , 0 , 1.1, 1.0 )), // Emmisive
+	Sphere(vec3( 0.0, 1.05,  3.5 ), 1.0 , Material(0, vec3(0.5,1,1), 0 , vec3(1), 1, 0.15, 1 , 1.3, 0.95))  // Glass
 );
+
+const Quad Scene_Quads[1] = Quad[1](
+	Quad(vec3( -10, 0, -10 ), vec3( 10, 0, -10 ), vec3( 10, 0, 10 ), vec3( -10, 0, 10 ), Material(1, vec3(0.5), 0, vec3(1), 0, 0.25 , 0 , 1 , 0.85)) // Floor
+);
+
+// INTERSECTIONS ---------------------------------------------------------------------------------------
+
+float Spehere_Intersection(in Ray ray, in Sphere sphere) {
+	vec3 s0_r0 = ray.Ray_Origin - sphere.Position;
+	float a = dot(ray.Ray_Direction, ray.Ray_Direction);
+	float b = 2.0 * dot(ray.Ray_Direction, s0_r0);
+	float c = dot(s0_r0, s0_r0) - (sphere.Diameter * sphere.Diameter);
+
+	if (b*b - 4.0*a*c < 0.0) {
+		return -1.0;
+	}
+	else {
+		return (-b - sqrt((b*b) - 4.0*a*c))/(2.0*a);
+	}
+}
+
+vec3 Quad_Intersection(in Ray ray, in Quad quad) {
+	vec3 a = quad.v1 - quad.v0;
+	vec3 b = quad.v3 - quad.v0;
+	vec3 c = quad.v2 - quad.v0;
+
+	vec3 p = ray.Ray_Origin - quad.v0;
+
+	vec3 nor = cross(a,b);
+	float t = -dot(p, nor)/dot(ray.Ray_Direction, nor);
+	if( t<0.0 ) return vec3(-1.0);
+
+	vec3 pos = p + t * ray.Ray_Direction;
+	vec3 mor = abs(nor);
+	int id;
+	if (mor.x > mor.y && mor.x > mor.z ) id = 0;
+	else if (mor.y > mor.z) id = 1;
+	else id = 2;
+
+	int idu = Quad_Face[id];
+	int idv = Quad_Face[id+1];
+
+	vec2 kp = vec2( pos[idu], pos[idv] );
+	vec2 ka = vec2( a[idu], a[idv] );
+	vec2 kb = vec2( b[idu], b[idv] );
+	vec2 kc = vec2( c[idu], c[idv] );
+
+	vec2 kg = kc-kb-ka;
+
+	float k0 = cross2d( kp, kb );
+	float k2 = cross2d( kc-kb, ka );
+	float k1 = cross2d( kp, kg ) - nor[id];
+	
+	// if edges are parallel, this is a linear equation
+	float u, v;
+	if( abs(k2) < 0.00001 ) {
+		v = -k0 / k1;
+		u = cross2d( kp, ka ) / k1;
+	}
+	else {
+		// otherwise, it's a quadratic
+		float w = k1 * k1 - 4.0 * k0 * k2;
+		if( w<0.0 ) {
+			return vec3(-1.0);
+		}
+		w = sqrt( w );
+		float ik2 = 1.0 / (2.0 * k2);
+		v = (-k1 - w)*ik2;
+		if( v < 0.0 || v > 1.0 ) {
+			v = (-k1 + w) * ik2;
+			u = (kp.x - ka.x*v)/(kb.x + kg.x*v);
+		}
+	}
+	
+	if( u<0.0 || u>1.0 || v<0.0 || v>1.0) {
+		return vec3(-1.0);
+	}
+	else {
+		return vec3( t, u, v );
+	}
+}
 
 // FUNCTIONS ---------------------------------------------------------------------------------------
 
@@ -136,18 +229,6 @@ void getRay(in vec2 uv, out vec3 ray_origin, out vec3 ray_direction) {
 	ray_direction = normalize(projection_center + (projection_u * uv.x) + (projection_v * uv.y) - iCameraPos);
 }
 
-float Spehere_Intersection(inout Ray ray, in Sphere sphere) {
-	vec3 s0_r0 = ray.Ray_Origin - sphere.Position;
-	float a = dot(ray.Ray_Direction, ray.Ray_Direction);
-	float b = 2.0 * dot(ray.Ray_Direction, s0_r0);
-	float c = dot(s0_r0, s0_r0) - (sphere.Radius * sphere.Radius);
-
-	if (b*b - 4.0*a*c < 0.0) {
-		return -1.0;
-	}
-	return (-b - sqrt((b*b) - 4.0*a*c))/(2.0*a);
-}
-
 Hit Scene_Intersection(in Ray ray) {
 	Hit hit_data;
 	hit_data.Ray_Length = MAX_DIST;
@@ -161,6 +242,15 @@ Hit Scene_Intersection(in Ray ray) {
 			hit_data.Hit_Mat = Scene_Spheres[i].Mat;
 		}
 	}
+	for (int i =0; i < 1; i++) {
+		vec3 resultTUV = Quad_Intersection(ray, Scene_Quads[i]);
+		if(resultTUV.x < hit_data.Ray_Length && resultTUV.x > 0.001) {
+			hit_data.Ray_Length = resultTUV.x;
+			hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * resultTUV.x;
+			hit_data.Hit_Normal = normalize(cross(Scene_Quads[i].v2 - Scene_Quads[i].v1, Scene_Quads[i].v3 - Scene_Quads[i].v1));
+			hit_data.Hit_Mat = Scene_Quads[i].Mat;
+		}
+	}
 	return hit_data;
 }
 
@@ -169,50 +259,63 @@ vec4 renderRadiance() {
 	getRay(fragCoord, ray.Ray_Origin, ray.Ray_Direction);
 
 	vec3 Color = vec3(0);
-	float Trasparency = 1;
 	float Absorption = 1.0;
+	float Bounces = 1;
 
-	for(int i = 0; i < 1; i++) {
+	for (int depth = 0; depth < RAY_BOUNCES; depth++) {
 		Hit hit_data = Scene_Intersection(ray);
-
 		if (hit_data.Ray_Length >= MAX_DIST) {
-			Color = vec3(0.5, 0.5, 0.9) * Absorption; // Ambient Lighting
-			Trasparency = 0;
+			Color += vec3(0) * Absorption; // Ambient Lighting
 			break;
 		}
 
-		if (hit_data.Hit_Mat.Diffuse_Gain > 0) {
-			Color += hit_data.Hit_Mat.Diffuse_Color * Absorption;
-			ray.Ray_Direction = reflect(ray.Ray_Direction, hit_data.Hit_Normal);
-		}
-		else if (hit_data.Hit_Mat.Specular_Gain > 0){
-			Color += hit_data.Hit_Mat.Diffuse_Color * Absorption;
-			ray.Ray_Direction = reflect(ray.Ray_Direction, hit_data.Hit_Normal);
-		}
-		else if (hit_data.Hit_Mat.Refraction > 0){
-			Color += hit_data.Hit_Mat.Diffuse_Color * Absorption;
-			ray.Ray_Direction = refract(ray.Ray_Direction, hit_data.Hit_Normal, hit_data.Hit_Mat.IOR);
-		}
-		else if (hit_data.Hit_Mat.Emmisive_Gain > 0){
-			Color += hit_data.Hit_Mat.Diffuse_Color * Absorption;
-			ray.Ray_Direction = reflect(ray.Ray_Direction, hit_data.Hit_Normal);
+		if (hit_data.Hit_Mat.Diffuse_Gain == 1) {
+			Color += hit_data.Hit_Mat.Diffuse_Color * hit_data.Hit_Mat.Emmisive_Gain * Absorption * 0.05;
+			ray.Ray_Direction = normalize(reflect(ray.Ray_Direction, hit_data.Hit_Normal) + rand3() * hit_data.Hit_Mat.Roughness);
 		}
 
-		ray.Ray_Origin = ray.Ray_Origin + ray.Ray_Direction * 0.0001;
+		if (hit_data.Hit_Mat.Specular_Gain > 0 && hit_data.Hit_Mat.Refraction > 0) {
+			Color += hit_data.Hit_Mat.Diffuse_Color * hit_data.Hit_Mat.Emmisive_Gain * Absorption * 0.05;
+			if (rand1() > 0.5) {
+				ray.Ray_Direction = normalize(reflect(ray.Ray_Direction, hit_data.Hit_Normal) + rand3() * hit_data.Hit_Mat.Roughness);
+			}
+			else {
+				ray.Ray_Direction = normalize(refract(ray.Ray_Direction, hit_data.Hit_Normal, hit_data.Hit_Mat.IOR) + rand3() * hit_data.Hit_Mat.Roughness);
+			}
+		}
+
+		else if (hit_data.Hit_Mat.Specular_Gain > 0) {
+			Color += hit_data.Hit_Mat.Diffuse_Color * hit_data.Hit_Mat.Emmisive_Gain * Absorption * 0.05;
+			ray.Ray_Direction = normalize(reflect(ray.Ray_Direction, hit_data.Hit_Normal) + rand3() * hit_data.Hit_Mat.Roughness);
+		}
+
+		else if (hit_data.Hit_Mat.Refraction > 0) {
+			Color += hit_data.Hit_Mat.Diffuse_Color * hit_data.Hit_Mat.Emmisive_Gain * Absorption * 0.05;
+			ray.Ray_Direction = normalize(refract(ray.Ray_Direction, hit_data.Hit_Normal, hit_data.Hit_Mat.IOR) + rand3() * hit_data.Hit_Mat.Roughness);
+		}
+
+		if (hit_data.Hit_Mat.Emmisive_Gain > 0) {
+			break;
+		}
+
+		ray.Ray_Origin = ray.Ray_Origin + ray.Ray_Direction * hit_data.Ray_Length;
 		Absorption *= hit_data.Hit_Mat.Absorption;
+		Bounces = float(depth + 1);
 	}
-	return vec4(Color, Trasparency);
+	return vec4(Color, 1.0/ Bounces);
 }
 
 // Main ---------------------------------------------------------------------------------------
 void main() {
 	rng_initialize(gl_FragCoord.xy, iFrame);
 
-	// if (iFrame <= 1) {
-	// 	fragColor = render(fragCoord);
-	// }
-	// else {
-	// 	fragColor = texture(iLastFrame, fragTexCoord);
-	// }
-	fragColor = renderRadiance();
+	if (iFrame <= 1) {
+		fragColor = renderRadiance();
+	}
+	else {
+		fragColor = texture(iLastFrame, fragTexCoord);
+	}
+	//for(int i = 0; i < SPP; i++) {
+		fragColor = renderRadiance();
+	//}
 }
