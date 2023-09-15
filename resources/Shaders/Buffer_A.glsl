@@ -28,16 +28,12 @@ out vec4 fragColor;
 #define SPHERE_COUNT 9
 #define LIGHT_COUNT 1
 
-#define INFINITY 1000000.
+#define INFINITY 5000.
 #define M_PI 3.1415926535897932384626433832795
 #define M_E 2.7182818284590452353602874
 
 #define SAMPLES 1
 #define MAX_BOUNCES 8
-
-//#define BRUTE_FORCE
-#define ACCUMULATE
-#define PBRT_CONE_SAMPLING
 
 struct Sphere{
 	vec3 p; //geometric information pos: g.xyz radius: g.w
@@ -83,15 +79,17 @@ vec3 cosine_weighted_hemi_sample(inout float seed)
 }
 
 
-Sphere spheres[SPHERE_COUNT] = Sphere[SPHERE_COUNT](Sphere(vec3(1., 3.2, -0.5), .5,vec3(1., 1., 1.), 1.45, GLASS),
-													Sphere(vec3(0., 5.2, -0.5), .5,vec3(0.1, 0.5, 0.9), 1.45, DIFFUSE),
-													Sphere(vec3(-1., 4.2, -0.5), .5,vec3(1., 1., 1.), 1.45, MIRROR),
-													Sphere(vec3(0., 4.5, 1.9), .4,vec3(1., 1, 1.) * 3.6, 0., EMISSION),
-													Sphere(vec3(0., 4., -1000), 999.,vec3(1, 1, 1), 0., DIFFUSE),
-													Sphere(vec3(1001., 0., 0.), 999.,vec3(.1, 0.9, 0.1), 0., DIFFUSE),
-													Sphere(vec3(-1001., 0., 0.), 999.,vec3(0.9, .1, 0.1), 0., DIFFUSE),
-													Sphere(vec3(0., 1005.5, 0.5), 999.,vec3(.9, 0.9, 0.9), 0., DIFFUSE),
-													Sphere(vec3(0., 0., 1001.7), 999.,vec3(.9, 0.9, 0.9), 0., DIFFUSE));
+Sphere spheres[SPHERE_COUNT] = Sphere[SPHERE_COUNT](
+	Sphere(vec3(1., -0.5, -3.2), .5,vec3(1., 1., 1.), 1.45, GLASS),
+	Sphere(vec3(0., -0.5, -5.2), .5,vec3(0.1, 0.5, 0.9), 1.45, DIFFUSE),
+	Sphere(vec3(-1., -0.5, -4.2), .5,vec3(1., 1., 1.), 1.45, MIRROR),
+	Sphere(vec3(0., 1.9, -4.5), .4,vec3(1., 1, 1.) * 3.6, 0., EMISSION),
+	Sphere(vec3(0., -1000, -4.), 999.,vec3(1, 1, 1), 0., DIFFUSE),
+	Sphere(vec3(1001., 0., 0.), 999.,vec3(.1, 0.9, 0.1), 0., DIFFUSE),
+	Sphere(vec3(-1001., 0., 0.), 999.,vec3(0.9, .1, 0.1), 0., DIFFUSE),
+	Sphere(vec3(0., 0.5, -1005.5), 999.,vec3(.9, 0.9, 0.9), 0., DIFFUSE),
+	Sphere(vec3(0., 1001.7, 0.), 999.,vec3(.9, 0.9, 0.9), 0., DIFFUSE)
+);
 int lights[LIGHT_COUNT] = int[LIGHT_COUNT] (3);//index of the spheres to be directly sampled
 //#endif
 
@@ -196,7 +194,6 @@ float fresnel(float iori, float iort, float cosi, float cost){
 	return (rpar + rper) / 2.;
 }
 
-#ifndef BRUTE_FORCE
 vec3 get_radiance(Ray r, inout float seed){
 	vec3 rad = vec3(0.,0.,0.);
 	float t;
@@ -264,12 +261,12 @@ vec3 get_radiance(Ray r, inout float seed){
 	return rad;
 	
 }
-#endif
 
-Ray ray_from_camera(vec2 uv, float fov, vec3 cam_pos, vec3 look_at, vec3 right_vector)
-{//fov is expressed in radians
-	float fl = 1./tan(fov / 2.); //focal length
-	return Ray(cam_pos, normalize(vec3(uv.x, fl, uv.y)));
+Ray ray_from_camera(vec2 uv) {
+	vec3 projection_center = iCameraPos + iCameraFocalLength * iCameraFront;
+	vec3 projection_u = normalize(cross(iCameraFront, iCameraUp)) * iCameraSensorWidth;
+	vec3 projection_v = normalize(cross(projection_u, iCameraFront)) * (iCameraSensorWidth / 1.0);
+	return Ray(iCameraPos, normalize(projection_center + (projection_u * uv.x) + (projection_v * uv.y) - iCameraPos));
 }
 
 // Main ---------------------------------------------------------------------------------------
@@ -281,13 +278,15 @@ void main() {
 	for (int s = 0; s < SAMPLES; s++){
 		float seed = hash12(gl_FragCoord.xy + iTime * M_PI + float(s) * 634.2342) + nrand(uv0 * iTime) * 52.2246 + hash2(uv0.x).x; //
 		vec2 uv = (gl_FragCoord.xy + hash2(seed) - 1. - iResolution.xy /2.)/max(iResolution.x, iResolution.y);
-		col += get_radiance(ray_from_camera(uv, M_PI * 0.5, vec3(0., -4., .8), vec3(0.,0.,0.), vec3(0.,0.,0.)), seed);
+		col += get_radiance(ray_from_camera(uv), seed);
 
 		
 	}
 	col /= float(SAMPLES);
 	// Accumulation
-	float interval = float(iFrame);
-	col = (texture(iLastFrame, fragTexCoord).xyz * interval + col) / (interval + 1.);
+	if (iFrame <= 1 || !iCameraChange) {
+		float interval = float(iFrame);
+		col = (texture(iLastFrame, fragTexCoord).xyz * interval + col) / (interval + 1.);
+	}
 	fragColor = vec4(col , 0.0);
 }

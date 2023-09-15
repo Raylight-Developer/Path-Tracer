@@ -45,6 +45,8 @@ void Renderer::recompile() {
 	FBO_main.Unbind();
 	last_frame_tex.Resize(iResolution);
 
+	camera = Camera();
+	camera_change = true;
 	iFrame = 0;
 	iTime = glfwGetTime();
 }

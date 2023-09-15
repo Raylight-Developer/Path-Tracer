@@ -190,9 +190,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="resources\Background.exr" />
-    <None Include="resources\Shaders\Buffer_A.glsl" />
-    <None Include="resources\Shaders\Main_Image.glsl" />
-    <None Include="resources\Shaders\Vert.glsl" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="resources\Icon.png" />
