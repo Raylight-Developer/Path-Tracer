@@ -20,8 +20,8 @@ Renderer::Renderer() {
 	camera_change = false;
 
 	keys = vector(348, false);
-	camera_move_sensitivity = 0.05;
-	camera_view_sensitivity = 0.05;
+	camera_move_sensitivity = 0.15;
+	camera_view_sensitivity = 0.075;
 	last_mouse = dvec2(iResolution) / 2.0;
 
 	VAO_main       = VAO();
@@ -73,7 +73,7 @@ void Renderer::cursor_position_callback(GLFWwindow* window, double xpos, double 
 
 		instance->last_mouse = dvec2(xpos, ypos);
 
-		instance->camera.rotate(xoffset * instance->camera_view_sensitivity, yoffset * instance->camera_view_sensitivity * 2.5);
+		instance->camera.rotate(xoffset * instance->camera_view_sensitivity, yoffset * instance->camera_view_sensitivity);
 		instance->camera_change = true;
 	}
 }
@@ -189,10 +189,10 @@ void Renderer::Init() {
 
 	glClearColor(0, 0, 0, 1);
 	while (!glfwWindowShouldClose(window)) {
-		if (!pause) {
+		if (!pause || iFrame < 30) {
 			// Input Handling
 			if (keys[GLFW_KEY_D]) {
-				camera.move(1, 0, 0, camera_move_sensitivity);
+				camera.move( 1, 0, 0, camera_move_sensitivity);
 				camera_change = true;
 			}
 			if (keys[GLFW_KEY_A]) {
@@ -200,7 +200,7 @@ void Renderer::Init() {
 				camera_change = true;
 			}
 			if (keys[GLFW_KEY_E] || keys[GLFW_KEY_SPACE]) {
-				camera.move(0, 1, 0, camera_move_sensitivity);
+				camera.move(0,  1, 0, camera_move_sensitivity);
 				camera_change = true;
 			}
 			if (keys[GLFW_KEY_Q] || keys[GLFW_KEY_LEFT_CONTROL]) {
@@ -208,7 +208,7 @@ void Renderer::Init() {
 				camera_change = true;
 			}
 			if (keys[GLFW_KEY_W]) {
-				camera.move(0, 0, 1, camera_move_sensitivity);
+				camera.move(0, 0,  1, camera_move_sensitivity);
 				camera_change = true;
 			}
 			if (keys[GLFW_KEY_S]) {
