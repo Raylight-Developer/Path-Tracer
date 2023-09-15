@@ -11,8 +11,12 @@ in vec2 fragTexCoord;
 
 out vec4 fragColor;
 
+#define GAMMA 0.4
+#define BRIGHTNESS 0.8
+
 void main() {
-	vec4 accumulation = texture(iRawFrame, fragTexCoord);
-	fragColor = vec4((accumulation.xyz / accumulation.w) * 0.03, 1);
-	fragColor = texture(iRawFrame, fragTexCoord);
+	vec4 col = texture(iRawFrame, fragTexCoord);
+	col *= BRIGHTNESS;
+	col = vec4(pow(col.x, GAMMA), pow(col.y, GAMMA), pow(col.z, GAMMA), pow(col.w, GAMMA));
+	fragColor = col * 1.3;
 }
