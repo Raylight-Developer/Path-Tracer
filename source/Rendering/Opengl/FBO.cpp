@@ -1,17 +1,17 @@
-#include "FBO.h"
+#include "Rendering/Opengl/FBO.h"
 
-void FBO::Init() {
+void FBO::f_init() {
 	glGenFramebuffers(1, &ID);
 }
 
-void FBO::Bind() {
+void FBO::f_bind() {
 	glBindFramebuffer(GL_FRAMEBUFFER, ID);
 }
 
-void FBO::Unbind() {
+void FBO::f_unbind() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void FBO::Delete() {
+void FBO::f_delete() {
 	glDeleteFramebuffers(1, &ID);
 }

@@ -20,14 +20,14 @@ out vec4 fragColor;
 
 // DEFINITIONS ---------------------------------------------------------------------------------------
 
-#define TWO_PI   6.28318530718
-#define PI       3.14159265359
-#define DEG_RAD  0.01745329252
-#define M_E      2.71828182846
-#define MAX_DIST 5000.0
+#define TWO_PI      6.28318530718
+#define PI          3.14159265359
+#define DEG_RAD     0.01745329252
+#define M_E         2.71828182846
+#define MAX_DIST    5000.0
 #define RAY_BOUNCES 6
 #define SPP         1
-#define SAMPLES     256
+#define SAMPLES     64
 
 // CONSTANTS ---------------------------------------------------------------------------------------
 
@@ -108,6 +108,33 @@ struct Material {
 	float Dispersion_Hue_A;
 	float Dispersion_Hue_B;
 	float Dispersion_Strength;
+};
+struct Shader {
+	float Transmission;
+	float Index_Of_Refraction;
+	float Refraction_Roughness;
+	float Reflection_Roughness;
+	float Reflection_Anisotropy;
+	float Reflection_Rotation;
+	float Subsurface_Radius;
+	float Subsurface_IOR;
+	float Subsurface_Anisotropy;
+	float Emissive_Strength;
+	float Iridescent;
+	float Iridescent_Roughness;
+	float Clearcoat_Roughness;
+	float Fuzz_Angle;
+	float Alpha;
+
+	vec3 Diffuse_Color;
+	vec3 Reflective_Color;
+	vec3 Refractive_Color;
+	vec3 Subsurface_Color;
+	vec3 Emissive_Color;
+	vec3 Iridescent_Color_A;
+	vec3 Iridescent_Color_B;
+	vec3 Clearcoat_Color;
+	vec3 Fuzz_Color;
 };
 struct Sun_Light {
 	float Intensity;
@@ -387,16 +414,16 @@ vec3 getRadiance(Ray r){
 		}
 		else if (hit_data.Hit_Mat.Specular_Gain > 0){ // SPECULAR
 			delta = true;
-			float Wavelength = mix(hit_data.Hit_Mat.Dispersion_Hue_A, hit_data.Hit_Mat.Dispersion_Hue_B, rand1());
-			r.Ray_Direction = reflectIOR(r.Ray_Direction, hit_data.Hit_New_Dir, hit_data.Hit_Mat.IOR + DispersionLaw(hit_data.Hit_Mat.Dispersion_Hue_A, hit_data.Hit_Mat.Dispersion_Hue_B, Wavelength, hit_data.Hit_Mat.Dispersion_Strength));
-			brdf *= getRGBfromHue(Wavelength);
+			//float Wavelength = mix(hit_data.Hit_Mat.Dispersion_Hue_A, hit_data.Hit_Mat.Dispersion_Hue_B, rand1());
+			r.Ray_Direction = reflect(r.Ray_Direction, hit_data.Hit_New_Dir);//reflectIOR(r.Ray_Direction, hit_data.Hit_New_Dir, hit_data.Hit_Mat.IOR + DispersionLaw(hit_data.Hit_Mat.Dispersion_Hue_A, hit_data.Hit_Mat.Dispersion_Hue_B, Wavelength, hit_data.Hit_Mat.Dispersion_Strength));
+			brdf *= hit_data.Hit_Mat.Diffuse_Color;//getRGBfromHue(Wavelength);
 		}
 		else if (hit_data.Hit_Mat.Refraction > 0){ // GLASS
 			delta = true;
 			float cosi = abs(dot(hit_data.Hit_New_Dir, r.Ray_Direction));
 			float sini = sqrt(1. - cosi * cosi);
-			float Wavelength = mix(hit_data.Hit_Mat.Dispersion_Hue_A, hit_data.Hit_Mat.Dispersion_Hue_B, rand1());
-			float iort = hit_data.Hit_Mat.IOR + DispersionLaw(hit_data.Hit_Mat.Dispersion_Hue_A, hit_data.Hit_Mat.Dispersion_Hue_B, Wavelength, hit_data.Hit_Mat.Dispersion_Strength);
+			//float Wavelength = mix(hit_data.Hit_Mat.Dispersion_Hue_A, hit_data.Hit_Mat.Dispersion_Hue_B, rand1());
+			float iort = hit_data.Hit_Mat.IOR;// + DispersionLaw(hit_data.Hit_Mat.Dispersion_Hue_A, hit_data.Hit_Mat.Dispersion_Hue_B, Wavelength, hit_data.Hit_Mat.Dispersion_Strength);
 			float iori = 1.0;
 			if (inside){
 				iori = iort;
@@ -409,7 +436,7 @@ vec3 getRadiance(Ray r){
 			if (rand1() > frsn){
 				vec3 bitangent = normalize(r.Ray_Direction - dot(hit_data.Hit_New_Dir, r.Ray_Direction) * hit_data.Hit_New_Dir);
 				r.Ray_Direction = normalize(bitangent * sint - cost * hit_data.Hit_New_Dir);
-				brdf *= getRGBfromHue(Wavelength);
+				brdf *= hit_data.Hit_Mat.Diffuse_Color;//getRGBfromHue(Wavelength);
 			}
 			else{
 				r.Ray_Direction = reflect(r.Ray_Direction, normalize(hit_data.Hit_New_Dir + rgb_noise * hit_data.Hit_Mat.Roughness));

@@ -1,19 +1,19 @@
-#include "VBO.h"
+#include "Rendering/Opengl/VBO.h"
 
-void VBO::Init(GLfloat* vertices, GLsizeiptr size) {
+void VBO::f_init(GLfloat* vertices, GLsizeiptr size) {
 	glGenBuffers(1, &ID);
 	glBindBuffer(GL_ARRAY_BUFFER, ID);
 	glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
 }
 
-void VBO::Bind() {
+void VBO::f_bind() {
 	glBindBuffer(GL_ARRAY_BUFFER, ID);
 }
 
-void VBO::Unbind() {
+void VBO::f_unbind() {
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void VBO::Delete() {
+void VBO::f_delete() {
 	glDeleteBuffers(1, &ID);
 }

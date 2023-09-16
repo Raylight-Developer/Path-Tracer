@@ -1,6 +1,6 @@
-#include "FBT.h"
+#include "Rendering/Opengl/FBT.h"
 
-void FBT::Init(const uvec2& i_size) {
+void FBT::f_init(const uvec2& i_size) {
 	glGenTextures(1, &ID);
 	glBindTexture(GL_TEXTURE_2D, ID);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, i_size.x, i_size.y, 0, GL_RGBA, GL_FLOAT, NULL);
@@ -13,7 +13,7 @@ void FBT::Init(const uvec2& i_size) {
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void FBT::Resize(const uvec2& i_size) {
+void FBT::f_resize(const uvec2& i_size) {
 	GLuint new_ID;
 
 	glGenTextures(1, &new_ID);
@@ -29,15 +29,15 @@ void FBT::Resize(const uvec2& i_size) {
 	ID = new_ID;
 }
 
-void FBT::Bind(const GLenum& i_texture_id) {
+void FBT::f_bind(const GLenum& i_texture_id) {
 	glActiveTexture(i_texture_id);
 	glBindTexture(GL_TEXTURE_2D, ID);
 }
 
-void FBT::Unbind() {
+void FBT::f_unbind() {
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void FBT::Delete() {
+void FBT::f_delete() {
 	glDeleteTextures(1, &ID);
 }

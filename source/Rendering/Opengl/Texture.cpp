@@ -1,6 +1,6 @@
-#include "Texture.h"
+#include "Rendering/Opengl/Texture.h"
 
-void Texture::Init(const string& i_image_path, const File_Extension::Enum& i_type) {
+void Texture::f_init(const string& i_image_path, const File_Extension::Enum& i_type) {
 	if (i_type == File_Extension::EXR) {
 		uint16_t width = 4096;
 		uint16_t height = 4096;
@@ -22,15 +22,15 @@ void Texture::Init(const string& i_image_path, const File_Extension::Enum& i_typ
 	}
 }
 
-void Texture::Bind(const GLenum& i_texture_id) {
+void Texture::f_bind(const GLenum& i_texture_id) {
 	glActiveTexture(i_texture_id);
 	glBindTexture(GL_TEXTURE_2D, ID);
 }
 
-void Texture::Unbind() {
+void Texture::f_unbind() {
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void Texture::Delete() {
+void Texture::f_delete() {
 	glDeleteTextures(1, &ID);
 }

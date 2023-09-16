@@ -18,6 +18,41 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\I-O\File.h" />
+    <ClInclude Include="include\Include.h" />
+    <ClInclude Include="include\Math\Lace.h" />
+    <ClInclude Include="include\Math\Math.h" />
+    <ClInclude Include="include\Object\Camera.h" />
+    <ClInclude Include="include\Rendering\Material.h" />
+    <ClInclude Include="include\Rendering\Opengl\EBO.h" />
+    <ClInclude Include="include\Rendering\Opengl\FBO.h" />
+    <ClInclude Include="include\Rendering\Opengl\FBT.h" />
+    <ClInclude Include="include\Rendering\Opengl\Renderer.h" />
+    <ClInclude Include="include\Rendering\Opengl\Shader_Program.h" />
+    <ClInclude Include="include\Rendering\Opengl\Texture.h" />
+    <ClInclude Include="include\Rendering\Opengl\VAO.h" />
+    <ClInclude Include="include\Rendering\Opengl\VBO.h" />
+    <ClInclude Include="include\Object\Sphere.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="source\Rendering\Opengl\glad.c" />
+    <ClCompile Include="source\I-O\File.cpp" />
+    <ClCompile Include="source\Math\Lace.cpp" />
+    <ClCompile Include="source\Math\Math.cpp" />
+    <ClCompile Include="source\Object\Camera.cpp" />
+    <ClCompile Include="source\Rendering\Material.cpp" />
+    <ClCompile Include="source\Rendering\Opengl\EBO.cpp" />
+    <ClCompile Include="source\Rendering\Opengl\FBO.cpp" />
+    <ClCompile Include="source\Rendering\Opengl\FBT.cpp" />
+    <ClCompile Include="source\Rendering\Opengl\Renderer.cpp" />
+    <ClCompile Include="source\Rendering\Opengl\Shader_Program.cpp" />
+    <ClCompile Include="source\Rendering\Opengl\Texture.cpp" />
+    <ClCompile Include="source\Rendering\Opengl\VAO.cpp" />
+    <ClCompile Include="source\Rendering\Opengl\VBO.cpp" />
+    <ClCompile Include="source\Object\Sphere.cpp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -157,43 +192,6 @@
       </AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClInclude Include="include\Camera.h" />
-    <ClInclude Include="include\File_Watcher.h" />
-    <ClInclude Include="include\FBT.h" />
-    <ClInclude Include="include\FBO.h" />
-    <ClInclude Include="include\Include.h" />
-    <ClInclude Include="include\EBO.h" />
-    <ClInclude Include="include\Shader.h" />
-    <ClInclude Include="include\VAO.h" />
-    <ClInclude Include="include\VBO.h" />
-    <ClInclude Include="include\Texture.h" />
-    <ClInclude Include="include\Renderer.h" />
-    <ClInclude Include="include\Scene.h" />
-    <ClInclude Include="include\Material.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="source\Material.cpp" />
-    <ClCompile Include="source\Camera.cpp" />
-    <ClCompile Include="source\Scene.cpp" />
-    <ClCompile Include="source\Renderer.cpp" />
-    <ClCompile Include="source\File_Watcher.cpp" />
-    <ClCompile Include="resources\glad.c" />
-    <ClCompile Include="source\FBT.cpp" />
-    <ClCompile Include="source\FBO.cpp" />
-    <ClCompile Include="source\EBO.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="source\Shader.cpp" />
-    <ClCompile Include="source\VAO.cpp" />
-    <ClCompile Include="source\VBO.cpp" />
-    <ClCompile Include="source\Texture.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="resources\Background.exr" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="resources\Icon.png" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

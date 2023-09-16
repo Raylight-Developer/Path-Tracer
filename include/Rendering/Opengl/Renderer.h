@@ -2,14 +2,14 @@
 
 #include "Include.h"
 
-#include "Camera.h"
+#include "Object/Camera.h"
 
 #include "VAO.h"
 #include "VBO.h"
 #include "EBO.h"
 #include "FBO.h"
 #include "FBT.h"
-#include "Shader.h"
+#include "Shader_Program.h"
 #include "Texture.h"
 
 struct Renderer {
@@ -43,7 +43,7 @@ struct Renderer {
 	Renderer();
 
 	void recompile();
-	void Init();
+	void f_init();
 
 	static void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 	static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
