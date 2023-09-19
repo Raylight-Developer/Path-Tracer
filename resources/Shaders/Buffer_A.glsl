@@ -4,12 +4,13 @@ uniform float iTime;
 uniform uint iFrame;
 uniform vec2 iResolution;
 
-uniform float iCameraFocalLength;
-uniform float iCameraSensorWidth;
-uniform vec3  iCameraPos;
-uniform vec3  iCameraFront;
-uniform vec3  iCameraUp;
-uniform bool  iCameraChange;
+uniform float     iCameraFocalLength;
+uniform float     iCameraSensorWidth;
+uniform vec3      iCameraPos;
+uniform vec3      iCameraFront;
+uniform vec3      iCameraUp;
+uniform bool      iCameraChange;
+uniform sampler2D iHdri;
 
 uniform sampler2D iLastFrame;
 
@@ -28,6 +29,11 @@ out vec4 fragColor;
 #define RAY_BOUNCES 6
 #define SPP         1
 #define SAMPLES     64
+
+#define EPSILON     0.001
+#define AO_LENGTH   5.0   // Ambient occlussion
+
+#define AO_RENDER   1
 
 // CONSTANTS ---------------------------------------------------------------------------------------
 
@@ -214,15 +220,15 @@ float Sphere_Intersection(in Ray ray, in Sphere sphere) {
 	return -1;
 }
 
-vec3 Quad_Intersection(in Ray ray, in Quad quad) {
+float Quad_Intersection(in Ray ray, in Quad quad) {
 	vec3 a = quad.v1 - quad.v0;
 	vec3 b = quad.v3 - quad.v0;
 	vec3 c = quad.v2 - quad.v0;
 	vec3 p = ray.Ray_Origin - quad.v0;
 	vec3 nor = cross(a,b);
 	float t = -dot(p, nor)/dot(ray.Ray_Direction, nor);
-	if( t<0.0 )
-		return vec3(-1.0);
+	if( t < 0.0 )
+		return -1.0;
 	vec3 pos = p + t * ray.Ray_Direction;
 	vec3 mor = abs(nor);
 	int id;
@@ -252,8 +258,8 @@ vec3 Quad_Intersection(in Ray ray, in Quad quad) {
 	else {
 		// otherwise, it's a quadratic
 		float w = k1 * k1 - 4.0 * k0 * k2;
-		if( w<0.0 ) {
-			return vec3(-1.0);
+		if( w < 0.0 ) {
+			return -1.0;
 		}
 		w = sqrt( w );
 		float ik2 = 1.0 / (2.0 * k2);
@@ -265,11 +271,9 @@ vec3 Quad_Intersection(in Ray ray, in Quad quad) {
 	}
 	
 	if( u<0.0 || u>1.0 || v<0.0 || v>1.0) {
-		return vec3(-1.0);
+		return -1.0;
 	}
-	else {
-		return vec3( t, u, v );
-	}
+	return t;
 }
 // LUT ---------------------------------------------------------------------------------------
 
@@ -322,10 +326,10 @@ Hit intersect_scene(const in Ray ray, inout bool inside) {
 		}
 	}
 	for (int i = 0; i < QUAD_COUNT; i++) {
-		vec3 resultTUV = Quad_Intersection(ray, Scene_Quads[i]);
-		if(resultTUV.x < hit_data.Ray_Length && resultTUV.x > 0.001) {
-			hit_data.Ray_Length = resultTUV.x;
-			hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * resultTUV.x;
+		float resultRayLength = Quad_Intersection(ray, Scene_Quads[i]);
+		if(resultRayLength < hit_data.Ray_Length && resultRayLength > 0.001) {
+			hit_data.Ray_Length = resultRayLength;
+			hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * resultRayLength;
 			vec3 nor = normalize(cross(Scene_Quads[i].v2 - Scene_Quads[i].v1, Scene_Quads[i].v3 - Scene_Quads[i].v1));
 			hit_data.Hit_New_Dir = faceforward( nor, ray.Ray_Direction, nor );
 			hit_data.Hit_Mat = Scene_Quads[i].Mat;

@@ -3,6 +3,9 @@
 Camera::Camera() {
 	focal_length = 0.05;
 	sensor_width = 0.036;
+	width  = 1920;
+	height = 1080;
+
 	position = dvec3(  1 , 2,  8 );
 	rotation = dvec3( -90, 0,  0 );
 	x_vector = dvec3(  1 , 0,  0 );

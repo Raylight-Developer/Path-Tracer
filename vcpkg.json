@@ -2,8 +2,6 @@
 	"name": "path-tracer",
 	"version-string": "0.1",
 	"dependencies": [
-		"tiff",
-		"opencolorio",
 		"openexr",
 		"glfw3",
 		"glm"

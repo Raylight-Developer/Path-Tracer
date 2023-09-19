@@ -28,14 +28,20 @@
     <ClInclude Include="include\Rendering\Opengl\EBO.h" />
     <ClInclude Include="include\Rendering\Opengl\FBO.h" />
     <ClInclude Include="include\Rendering\Opengl\FBT.h" />
-    <ClInclude Include="include\Rendering\Opengl\Renderer.h" />
+    <ClInclude Include="include\Rendering\Opengl\GLSL_Renderer.h" />
     <ClInclude Include="include\Rendering\Opengl\Shader_Program.h" />
     <ClInclude Include="include\Rendering\Opengl\Texture.h" />
     <ClInclude Include="include\Rendering\Opengl\VAO.h" />
     <ClInclude Include="include\Rendering\Opengl\VBO.h" />
     <ClInclude Include="include\Object\Sphere.h" />
+    <ClInclude Include="include\Rendering\Kerzenlicht_Renderer.h" />
+    <ClInclude Include="include\Object\Mesh.h" />
+    <ClInclude Include="include\Object\Scene_Object.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="source\Object\Scene_Object.cpp" />
+    <ClCompile Include="source\Object\Mesh.cpp" />
+    <ClCompile Include="source\Rendering\Kerzenlicht_Renderer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="source\Rendering\Opengl\glad.c" />
     <ClCompile Include="source\I-O\File.cpp" />
@@ -46,7 +52,7 @@
     <ClCompile Include="source\Rendering\Opengl\EBO.cpp" />
     <ClCompile Include="source\Rendering\Opengl\FBO.cpp" />
     <ClCompile Include="source\Rendering\Opengl\FBT.cpp" />
-    <ClCompile Include="source\Rendering\Opengl\Renderer.cpp" />
+    <ClCompile Include="source\Rendering\Opengl\GLSL_Renderer.cpp" />
     <ClCompile Include="source\Rendering\Opengl\Shader_Program.cpp" />
     <ClCompile Include="source\Rendering\Opengl\Texture.cpp" />
     <ClCompile Include="source\Rendering\Opengl\VAO.cpp" />
@@ -158,7 +164,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)\external;$(SolutionDir)\external\glad</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\external\vcpkg\pkgs\imath_x64-windows\include\Imath;$(SolutionDir)\external;$(SolutionDir)\external\glad</AdditionalIncludeDirectories>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
@@ -178,7 +184,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)\external;$(SolutionDir)\external\glad</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\external\vcpkg\pkgs\imath_x64-windows\include\Imath;$(SolutionDir)\external;$(SolutionDir)\external\glad</AdditionalIncludeDirectories>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>

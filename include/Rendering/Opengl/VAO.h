@@ -8,7 +8,7 @@ struct VAO {
 
 	VAO() { ID = 0; };
 
-	void f_linkVBO(VBO& VBO, GLuint layout, GLuint numComponents, GLenum type, GLsizeiptr stride, void* offset);
+	void f_linkVBO(VBO& VBO, GLuint layout, GLuint numComponents, GLenum type, GLsizei stride, void* offset);
 
 	void f_init();
 	void f_bind();
