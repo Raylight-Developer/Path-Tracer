@@ -1,4 +1,7 @@
 # Path Tracer
+![image](https://github.com/AleMar21430/Path-Tracer/assets/99276653/36e06456-c598-4a39-88d5-0dd0c2082d66)
+![image](https://github.com/AleMar21430/Path-Tracer/assets/99276653/a104ecd4-f21f-4725-bc17-bd4210254a26)
+
 ```
 Visual Studio Community 2022   17.7.2
 OpenGL                         4.6.0
