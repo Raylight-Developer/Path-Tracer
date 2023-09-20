@@ -29,6 +29,9 @@ struct GLSL_Renderer {
 	double camera_view_sensitivity;
 	dvec2 last_mouse;
 
+	double last_frame_time;
+	double frame_time;
+
 	VAO main_vao;
 	VBO main_vbo;
 	EBO main_ebo;

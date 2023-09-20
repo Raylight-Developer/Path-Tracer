@@ -31,9 +31,13 @@ out vec4 fragColor;
 #define SAMPLES     64
 
 #define EPSILON     0.001
-#define AO_LENGTH   5.0   // Ambient occlussion
+#define AO_LENGTH   10.0   // Ambient occlussion
 
-#define AO_RENDER   1
+#define PATHTRACE   0
+#define AO_DEBUG    1
+#define DEPTH_DEBUG 2
+
+#define RENDER_MODE DEPTH_DEBUG
 
 // CONSTANTS ---------------------------------------------------------------------------------------
 
@@ -73,6 +77,13 @@ vec2 nrand2(float sigma, vec2 mean) {
 vec3 nrand3(float sigma, vec3 mean) {
 	vec4 Z = rand4();
 	return mean + sigma * sqrt(-2.0 * log(Z.xxy)) * vec3(cos(TWO_PI * Z.z), sin(TWO_PI * Z.z), cos(TWO_PI * Z.w));
+}
+vec3 randVec() {
+	vec3 vector = rand3();
+	float x = mapFloat(vector.x, 0, 1, -1, 1);
+	float y = mapFloat(vector.y, 0, 1, -1, 1);
+	float z = mapFloat(vector.z, 0, 1, -1, 1);
+	return vec3(x,y,z);
 }
 void rng_initialize(vec2 pix, uint frame) {
 	pixel = uvec2(pix);
@@ -391,13 +402,13 @@ vec3 sampleLights(const in Hit hit_data, in int object_id, out float inv_prob) {
 	}
 }
 
-vec3 getRadiance(Ray r){
+vec3 getRadiance(in Ray r){
 	vec3 rad = vec3(0);
 	vec3 brdf = vec3(1);
 	bool delta = true;
 	bool inside = false;
 
-	for (int b = 0; b < RAY_BOUNCES; b++){
+	for (int b = 0; b < RAY_BOUNCES; b++) {
 		Hit hit_data = intersect_scene(r, inside);
 
 		if (hit_data.Ray_Length >= MAX_DIST) {
@@ -454,6 +465,34 @@ vec3 getRadiance(Ray r){
 	return rad;
 }
 
+vec3 getAmbientOcclusion(in Ray r) {
+	bool inside = false;
+	float distPercent;
+	for (int b = 0; b < 2; b++){
+		Hit hit_data = intersect_scene(r, inside);
+
+		if (hit_data.Ray_Length >= MAX_DIST) {
+			return vec3(0.0); // MISS;
+		}
+		r.Ray_Direction = normalize(hit_data.Hit_New_Dir + rand3());
+		r.Ray_Origin = hit_data.Hit_Pos + r.Ray_Direction * 0.001;
+		distPercent = min(hit_data.Ray_Length / AO_LENGTH, 1.0);
+	}
+
+	return vec3(distPercent, distPercent, distPercent);
+}
+
+vec3 getDepth(in Ray r) {
+	bool inside = false;
+	Hit hit_data = intersect_scene(r, inside);
+
+	if (hit_data.Ray_Length >= MAX_DIST) {
+		return vec3(0.0); // MISS;
+	}
+
+	return vec3(1 - min(hit_data.Ray_Length / 50.0, 0.9));
+}
+
 Ray getRay(vec2 uv) {
 	vec3 projection_center = iCameraPos + iCameraFocalLength * iCameraFront;
 	vec3 projection_u = normalize(cross(iCameraFront, iCameraUp)) * iCameraSensorWidth;
@@ -465,22 +504,37 @@ Ray getRay(vec2 uv) {
 void main() {
 	if (iFrame < SAMPLES) {
 		rng_initialize(gl_FragCoord.xy, iFrame);
-		vec2 uv0 = gl_FragCoord.xy/iResolution.xy;
+		vec2 uv = (gl_FragCoord.xy - 1.0 - iResolution.xy /2.0)/max(iResolution.x, iResolution.y);
 		
-		vec3 col;
-		for (int s = 0; s < SPP; s++){
-			vec2 uv = (gl_FragCoord.xy - 1.0 - iResolution.xy /2.0)/max(iResolution.x, iResolution.y);
-			col += getRadiance(getRay(uv));
-
-			
+		if (RENDER_MODE == 0) {
+			vec3 col;
+			for (int s = 0; s < SPP; s++){
+				col += getRadiance(getRay(uv));
+			}
+			col /= float(SPP);
+			// Accumulation
+			float interval = float(iFrame);
+			if (iFrame <= 1 || !iCameraChange) {
+				col = (texture(iLastFrame, fragTexCoord).xyz * interval + col) / (interval + 1.0);
+			}
+			fragColor = vec4(col , 1);
 		}
-		col /= float(SPP);
-		// Accumulation
-		float interval = float(iFrame);
-		if (iFrame <= 1 || !iCameraChange) {
-			col = (texture(iLastFrame, fragTexCoord).xyz * interval + col) / (interval + 1.0);
+		else if (RENDER_MODE == 1) {
+			vec3 col;
+			for (int s = 0; s < SPP; s++){
+				col += getAmbientOcclusion(getRay(uv));
+			}
+			col /= float(SPP);
+			// Accumulation
+			float interval = float(iFrame);
+			if (iFrame <= 1 || !iCameraChange) {
+				col = (texture(iLastFrame, fragTexCoord).xyz * interval + col) / (interval + 1.0);
+			}
+			fragColor = vec4(col , 1);
 		}
-		fragColor = vec4(col , 1);
+		else if (RENDER_MODE == 2) {
+			fragColor = vec4(getDepth(getRay(uv)) , 1);
+		}
 	}
 	else {
 		fragColor = texture(iLastFrame, fragTexCoord);

@@ -24,6 +24,9 @@ GLSL_Renderer::GLSL_Renderer() {
 	camera_view_sensitivity = 0.075;
 	last_mouse = dvec2(iResolution) / 2.0;
 
+	last_frame_time = 0;
+	frame_time = 0.01;
+
 	main_vao       = VAO();
 	main_vbo       = VBO();
 	main_ebo          = EBO();
@@ -229,6 +232,9 @@ void GLSL_Renderer::f_init() {
 			}
 
 			double Time = glfwGetTime() - iTime;
+			frame_time = glfwGetTime() - last_frame_time;
+
+
 			main_fbo.f_bind();
 			glClear(GL_COLOR_BUFFER_BIT);
 			main_buffer.f_activate();

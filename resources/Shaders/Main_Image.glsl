@@ -19,4 +19,5 @@ void main() {
 	col *= BRIGHTNESS;
 	col = vec4(pow(col.x, GAMMA), pow(col.y, GAMMA), pow(col.z, GAMMA), pow(col.w, GAMMA));
 	fragColor = col * 1.3;
+	fragColor = texture(iRawFrame, fragTexCoord);
 }
