@@ -31,13 +31,6 @@ out vec4 fragColor;
 #define SAMPLES     64
 
 #define EPSILON     0.001
-#define AO_LENGTH   10.0   // Ambient occlussion
-
-#define PATHTRACE   0
-#define AO_DEBUG    1
-#define DEPTH_DEBUG 2
-
-#define RENDER_MODE DEPTH_DEBUG
 
 // CONSTANTS ---------------------------------------------------------------------------------------
 
@@ -102,31 +95,23 @@ float fresnel(float iori, float iort, float cosi, float cost){
 	rper *= rper;
 	return (rpar + rper) / 2.;
 }
-vec3 reflectIOR(vec3 incidentDir, vec3 normal, float ior) {
-	normal = normalize(normal);
-	float cosTheta = dot(-incidentDir, normal);
-	vec3 transmittedDir = refract(incidentDir, normal, ior);
-	vec3 reflectionDir = reflect(incidentDir, normal);
-	return reflectionDir;
-}
 
 // STRUCTS ---------------------------------------------------------------------------------------
 
+#define DIFFUSE  0
+#define SPECULAR 1
+#define EMISSIVE 2
+#define GLASS    3
+
 struct Material {
-	float Diffuse_Gain;
-	vec3  Diffuse_Color;
-	float Emissive_Gain;
-	vec3  Emissive_Color;
-	float Specular_Gain;
+	int   Type;
+	vec3  Color;
+	float Emissive_Strength;
 	float Roughness;
-	float Refraction;
 	float IOR;
-	float Absorption;
-	float Dispersion_Hue_A;
-	float Dispersion_Hue_B;
-	float Dispersion_Strength;
 };
-struct Shader {
+
+struct Bsdf {
 	float Transmission;
 	float Index_Of_Refraction;
 	float Refraction_Roughness;
@@ -181,34 +166,45 @@ struct Quad {
 	vec3 v3;
 	Material Mat;
 };
-struct Triangle {
-	vec3     Position_A;
-	vec3     Position_B;
-	vec3     Position_C;
+struct Tri {
+	vec3     v0;
+	vec3     v1;
+	vec3     v2;
 	Material Mat;
 };
 
 // SCENE ---------------------------------------------------------------------------------------
-#define SPHERE_COUNT 4
-#define QUAD_COUNT   7
+#define SPHERE_COUNT 17
+#define QUAD_COUNT   4
 
 const Sphere Scene_Spheres[SPHERE_COUNT] = Sphere[SPHERE_COUNT](
-		// POSITIOM               , DIAMETER,          DIFF_Gain, DIFF_Color         , EMISS_Gain, Emiss_Color  , Spec_Gain, RGH , Refrac_Gain, IOR, Absorp, DISP_A, DISP_B, DIST_Strength
-	Sphere(vec3( 1 , 0.52 , -3.2 ), 0.5     , Material(0        , vec3(1  , 1  , 1  ), 0         , vec3(1, 1, 1), 0        , 0   , 1          , 1.3, 1.0   , 0     , 360   , 0.05  )), // Glass
-	Sphere(vec3( 0 , 0.52 , -5.2 ), 0.5     , Material(1        , vec3(0.1, 0.5, 0.9), 0         , vec3(1, 1, 1), 0        , 0.85, 0          , 1.1, 1.0   , 0     , 300   , 0.05  )), // Diffuse
-	Sphere(vec3(-1 , 0.52 , -4.2 ), 0.5     , Material(0        , vec3(1  , 1  , 1  ), 0         , vec3(1, 1, 1), 1        , 0   , 0          , 1.3, 1.0   , 0     , 360   , 0.001 )), // Mirror
-	Sphere(vec3( 0 , 3.0  , -4.5 ), 0.4     , Material(0        , vec3(1  , 1  , 1  ), 15        , vec3(1, 1, 1), 0        , 0   , 0          , 1.1, 1.0   , 0     , 300   , 0.05  ))  // Emissive
-);
+		// POSITIOM                      , DIAMETER,          Type     , Color              , Emissiveness, Roughness, IOR
+	Sphere(vec3(  0    ,  0.4   , 0     ), 0.4     , Material(DIFFUSE  , vec3(1  , 1  , 1  ), 0           , 0        , 1.2 )), // Lower Ball
+	Sphere(vec3(  0    ,  0.9   , 0     ), 0.32    , Material(DIFFUSE  , vec3(1  , 1  , 1  ), 0           , 0        , 1.2 )), // Middle Ball
+	Sphere(vec3(  0    ,  1.3   , 0     ), 0.26    , Material(DIFFUSE  , vec3(1  , 1  , 1  ), 0           , 0        , 1.2 )), // Upper Ball
+	Sphere(vec3(  0    ,  0.4   , 0.4   ), 0.05    , Material(DIFFUSE  , vec3(0  , 0  , 0  ), 0           , 0        , 1.2 )), // Lower Button
+	Sphere(vec3(  0    ,  0.65  , 0.35  ), 0.05    , Material(DIFFUSE  , vec3(0  , 0  , 0  ), 0           , 0        , 1.2 )), // Middle Button
+	Sphere(vec3(  0    ,  0.9   , 0.35  ), 0.05    , Material(DIFFUSE  , vec3(0  , 0  , 0  ), 0           , 0        , 1.2 )), // Upper Button
+	Sphere(vec3(  0.1  ,  1.35  , 0.15  ), 0.1     , Material(SPECULAR , vec3(1  , 1  , 1  ), 0           , 0        , 1.2 )), // Eye L
+	Sphere(vec3( -0.1  ,  1.35  , 0.15  ), 0.1     , Material(SPECULAR , vec3(1  , 1  , 1  ), 0           , 0        , 1.2 )), // Eye R
+	Sphere(vec3(  0.11 ,  1.355 , 0.18  ), 0.07    , Material(EMISSIVE , vec3(1  , 1  , 1  ), 5           , 0        , 1.2 )), // Eye Glint L
+	Sphere(vec3( -0.11 ,  1.355 , 0.18  ), 0.07    , Material(EMISSIVE , vec3(1  , 1  , 1  ), 5           , 0        , 1.2 )), // Eye Glint R
 
+	Sphere(vec3( -0.1  ,  1.2   , 0.235 ), 0.015   , Material(DIFFUSE  , vec3(0  , 0  , 0  ), 0           , 0        , 1.2 )), // Mouth R
+	Sphere(vec3( -0.05 ,  1.18  , 0.235 ), 0.015   , Material(DIFFUSE  , vec3(0  , 0  , 0  ), 0           , 0        , 1.2 )), // Mouth LR
+	Sphere(vec3(  0    ,  1.17  , 0.23  ), 0.015   , Material(DIFFUSE  , vec3(0  , 0  , 0  ), 0           , 0        , 1.2 )), // Mouth M
+	Sphere(vec3(  0.05 ,  1.18  , 0.235 ), 0.015   , Material(DIFFUSE  , vec3(0  , 0  , 0  ), 0           , 0        , 1.2 )), // Mouth LM
+	Sphere(vec3(  0.1  ,  1.2   , 0.235 ), 0.015   , Material(DIFFUSE  , vec3(0  , 0  , 0  ), 0           , 0        , 1.2 )), // Mouth L
+
+	Sphere(vec3(  0    ,  1.25  , 0.25  ), 0.03    , Material(EMISSIVE , vec3(1.0, 0.5, 0.2), 3           , 0        , 1.2 )), // Nose
+	Sphere(vec3(  2    ,  3     , 5     ), 0.4     , Material(EMISSIVE , vec3(1  , 1  , 1  ), 100          , 0        , 1.2 ))
+);
 const Quad Scene_Quads[QUAD_COUNT] = Quad[QUAD_COUNT](
-	  // VERT_A               , VERT_B               , VERT_C               , VERT_D               ,          DIFF_Gain, DIFF_Color         , EMISS_Gain, Emiss_Color  , Spec_Gain, RGH , Refrac_Gain, IOR, Absorp, DISP_A, DISP_B, DIST_Strength
-	Quad(vec3( -10, 0  , -30 ), vec3(  10, 0  , -30 ), vec3(  10, 0  ,  30 ), vec3( -10, 0  ,  30 ), Material(1        , vec3(1  , 1  , 1  ), 0         , vec3(1, 1, 1), 0        , 0.5 , 0          , 1.3, 1.0   , 0     , 300   , 0.05  )), // Floor
-	Quad(vec3(  5 , 0  , -30 ), vec3(  5 , 0  ,  30 ), vec3(  5 , 10 ,  30 ), vec3(  5 , 10 , -30 ), Material(1        , vec3(1  , 0  , 0  ), 0         , vec3(1, 1, 1), 0        , 0.5 , 0          , 1.3, 1.0   , 0     , 300   , 0.05  )), // Right
-	Quad(vec3(  10, 10 , -30 ), vec3(  10, 10 ,  30 ), vec3( -10, 10 ,  30 ), vec3( -10, 10 , -30 ), Material(1        , vec3(1  , 1  , 1  ), 0         , vec3(1, 1, 1), 0        , 0.5 , 0          , 1.3, 1.0   , 0     , 300   , 0.05  )), // Ceil
-	Quad(vec3( -5 , 10 , -30 ), vec3( -5 , 10 ,  30 ), vec3( -5 , 0  ,  30 ), vec3( -5 , 0  , -30 ), Material(1        , vec3(0  , 1  , 0  ), 0         , vec3(1, 1, 1), 0        , 0.5 , 0          , 1.3, 1.0   , 0     , 300   , 0.05  )), // Left
-	Quad(vec3( -10, 0  , -30 ), vec3(  10, 0  , -30 ), vec3(  10, 10 , -30 ), vec3( -10, 10 , -30 ), Material(0        , vec3(1  , 1  , 1  ), 0         , vec3(1, 1, 1), 1        , 0   , 0          , 1.3, 1.0   , 0     , 300   , 0.05  )), // Front
-	Quad(vec3( -5 , 0  ,  30 ), vec3(  5 , 0  ,  30 ), vec3(  5 , 10 ,  30 ), vec3( -5 , 10 ,  30 ), Material(1        , vec3(1  , 0  , 1  ), 0         , vec3(1, 1, 1), 0        , 0.5 , 0          , 1.3, 1.0   , 0     , 300   , 0.05  )), // Back
-	Quad(vec3(  2 , 9.9, -2  ), vec3(  2 , 9.9,  2  ), vec3( -2 , 9.9,  2  ), vec3( -2 , 9.9, -2  ), Material(0        , vec3(1  , 1  , 1  ), 50        , vec3(1, 1, 1), 0        , 0.05, 0          , 1.3, 1.0   , 0     , 300   , 0.05  ))  // Sky Light
+	// VERT_A               , VERT_B               , VERT_C               , VERT_D                 ,          Type     , Color              , Emissiveness, Roughness, IOR
+	Quad(vec3( -5 , 0  , -5  ), vec3(  5 , 0  , -5  ), vec3(  5 , 0  ,  5  ), vec3( -5 , 0  ,  5  ), Material(DIFFUSE  , vec3(0.5, 0.5, 0.5), 0           , 0        , 1.2 )),
+	Quad(vec3(  5 , 0  , -5  ), vec3(  5 , 0  ,  5  ), vec3(  5 , 10 ,  5  ), vec3(  5 , 10 , -5  ), Material(DIFFUSE  , vec3(1  , 0  , 0  ), 0           , 0        , 1.2 )),
+	Quad(vec3( -5 , 0  , -5  ), vec3( -5 , 0  ,  5  ), vec3( -5 , 10 ,  5  ), vec3( -5 , 10 , -5  ), Material(DIFFUSE  , vec3(0  , 1  , 0  ), 0           , 0        , 1.2 )),
+	Quad(vec3( -5 , 0  , -5  ), vec3(  5 , 0  , -5  ), vec3(  5 , 10 ,  5  ), vec3( -5 , 10 ,  5  ), Material(DIFFUSE  , vec3(0.5, 0.5, 0.5), 0           , 0        , 1.2 ))
 );
 
 // INTERSECTIONS ---------------------------------------------------------------------------------------
@@ -286,27 +282,6 @@ float Quad_Intersection(in Ray ray, in Quad quad) {
 	}
 	return t;
 }
-// LUT ---------------------------------------------------------------------------------------
-
-vec3 getRGBfromHue(float hue) {
-	float Max = 1.0;
-	float Min = 0.0;
-	float Volatile = (Max - Min) * (1.0 - float(int(abs(hue / 60.0)) % 2) - 1.0) + Min;
-	if (hue < 60.0)
-		return vec3(Max, Volatile, Min);
-	else if (hue < 120.0)
-		return vec3(Volatile, Max, Min);
-	else if (hue < 180.0)
-		return vec3(Min, Max, Volatile);
-	else if (hue < 240.0)
-		return vec3(Min, Volatile, Max);
-	else if (hue < 300.0)
-		return vec3(Volatile, Min, Max);
-	else if (hue < 360.0)
-		return vec3(Max, Min, Volatile);
-	else
-		return vec3(Max, Min, Min);
-}
 
 // FUNCTIONS ---------------------------------------------------------------------------------------
 
@@ -364,7 +339,6 @@ vec3 cone_uniform(in float theta, in vec3 dir) {
 		left * cos(phi) * sin_theta +
 		up   * sin(phi) * sin_theta +
 		dir  * cos_theta);
-
 }
 
 vec3 sampleLights(const in Hit hit_data, in int object_id, out float inv_prob) {
@@ -379,10 +353,9 @@ vec3 sampleLights(const in Hit hit_data, in int object_id, out float inv_prob) {
 		inv_prob = (2.0 * (1.0 - cos(theta)));
 
 		Hit hit = intersect_scene(r, inside);
-		if (hit.Hit_Mat.Emissive_Gain > 0 && hit.Hit_Obj == object_id) {
-			return sphere.Mat.Emissive_Color * sphere.Mat.Emissive_Gain * max(0.0, dot(r.Ray_Direction, hit_data.Hit_New_Dir)) * inv_prob;
+		if (hit.Hit_Mat.Type == EMISSIVE && hit.Hit_Obj == object_id) {
+			return sphere.Mat.Color * sphere.Mat.Emissive_Strength * max(0.0, dot(r.Ray_Direction, hit_data.Hit_New_Dir)) * inv_prob;
 		}
-		return vec3(0);
 	}
 	else if (object_id < SPHERE_COUNT + QUAD_COUNT) {
 		Quad quad = Scene_Quads[object_id - SPHERE_COUNT];
@@ -391,15 +364,13 @@ vec3 sampleLights(const in Hit hit_data, in int object_id, out float inv_prob) {
 		float theta = asin(1.0 / dist);
 		Ray r = Ray(hit_data.Hit_Pos + hit_data.Hit_New_Dir * 0.0001, dir); //epsilon to make sure it self intersects
 		bool inside;
-
 		inv_prob = (2.0 * (1.0 - cos(theta)));
-
 		Hit hit = intersect_scene(r, inside);
-		if (hit.Hit_Mat.Emissive_Gain > 0 && hit.Hit_Obj == (object_id - SPHERE_COUNT)) {
-			return quad.Mat.Emissive_Color * quad.Mat.Emissive_Gain * max(0.0, dot(r.Ray_Direction, hit_data.Hit_New_Dir)) * inv_prob;
+		if (hit.Hit_Mat.Emissive_Strength > 0 && hit.Hit_Obj == (object_id - SPHERE_COUNT)) {
+			return quad.Mat.Color * quad.Mat.Emissive_Strength * max(0.0, dot(r.Ray_Direction, hit_data.Hit_New_Dir)) * inv_prob;
 		}
-		return vec3(0);
 	}
+	return vec3(0);
 }
 
 vec3 getRadiance(in Ray r){
@@ -415,30 +386,28 @@ vec3 getRadiance(in Ray r){
 			return rad + brdf * vec3(0.0, 0.0, 0.0); // MISS;
 		}
 		float prob = 0.;
-		if (hit_data.Hit_Mat.Diffuse_Gain > 0){ // DIFFUSE
+		if (hit_data.Hit_Mat.Type == DIFFUSE) {
 			delta = false;
 			vec3 tangent = normalize(cross(r.Ray_Direction, hit_data.Hit_New_Dir));
 			vec3 bitangent = normalize(cross(hit_data.Hit_New_Dir, tangent));
 			vec3 nr = cosine_weighted_hemi_sample();;
-			r.Ray_Direction = normalize(hit_data.Hit_New_Dir + rgb_noise * hit_data.Hit_Mat.Roughness);//normalize(tangent * nr.x + bitangent * nr.y + hit_data.Hit_New_Dir * nr.z);
-			brdf *= hit_data.Hit_Mat.Diffuse_Color;
-			for (int i = 0; i < SPHERE_COUNT + QUAD_COUNT; i++) {
+			r.Ray_Direction = normalize(tangent * nr.x + bitangent * nr.y + hit_data.Hit_New_Dir * nr.z);
+			brdf *= hit_data.Hit_Mat.Color;
+			for (int i = 0; i < SPHERE_COUNT; i++) {
 				vec3 acc = brdf * sampleLights(hit_data, i, prob);
 				rad += acc;
 			}
 		}
-		else if (hit_data.Hit_Mat.Specular_Gain > 0){ // SPECULAR
+		else if (hit_data.Hit_Mat.Type == SPECULAR) {
 			delta = true;
-			//float Wavelength = mix(hit_data.Hit_Mat.Dispersion_Hue_A, hit_data.Hit_Mat.Dispersion_Hue_B, rand1());
-			r.Ray_Direction = reflect(r.Ray_Direction, hit_data.Hit_New_Dir);//reflectIOR(r.Ray_Direction, hit_data.Hit_New_Dir, hit_data.Hit_Mat.IOR + DispersionLaw(hit_data.Hit_Mat.Dispersion_Hue_A, hit_data.Hit_Mat.Dispersion_Hue_B, Wavelength, hit_data.Hit_Mat.Dispersion_Strength));
-			brdf *= hit_data.Hit_Mat.Diffuse_Color;//getRGBfromHue(Wavelength);
+			r.Ray_Direction = reflect(r.Ray_Direction, hit_data.Hit_New_Dir);
+			brdf *= hit_data.Hit_Mat.Color;
 		}
-		else if (hit_data.Hit_Mat.Refraction > 0){ // GLASS
+		else if (hit_data.Hit_Mat.Type == GLASS) {
 			delta = true;
 			float cosi = abs(dot(hit_data.Hit_New_Dir, r.Ray_Direction));
 			float sini = sqrt(1. - cosi * cosi);
-			//float Wavelength = mix(hit_data.Hit_Mat.Dispersion_Hue_A, hit_data.Hit_Mat.Dispersion_Hue_B, rand1());
-			float iort = hit_data.Hit_Mat.IOR;// + DispersionLaw(hit_data.Hit_Mat.Dispersion_Hue_A, hit_data.Hit_Mat.Dispersion_Hue_B, Wavelength, hit_data.Hit_Mat.Dispersion_Strength);
+			float iort = hit_data.Hit_Mat.IOR;
 			float iori = 1.0;
 			if (inside){
 				iori = iort;
@@ -451,46 +420,18 @@ vec3 getRadiance(in Ray r){
 			if (rand1() > frsn){
 				vec3 bitangent = normalize(r.Ray_Direction - dot(hit_data.Hit_New_Dir, r.Ray_Direction) * hit_data.Hit_New_Dir);
 				r.Ray_Direction = normalize(bitangent * sint - cost * hit_data.Hit_New_Dir);
-				brdf *= hit_data.Hit_Mat.Diffuse_Color;//getRGBfromHue(Wavelength);
+				brdf *= hit_data.Hit_Mat.Color;
 			}
-			else{
+			else {
 				r.Ray_Direction = reflect(r.Ray_Direction, normalize(hit_data.Hit_New_Dir + rgb_noise * hit_data.Hit_Mat.Roughness));
 			}
 		}
-		else if (hit_data.Hit_Mat.Emissive_Gain > 0) { // EMISSIVE
-			return rad + brdf * (delta ? hit_data.Hit_Mat.Emissive_Color *  hit_data.Hit_Mat.Emissive_Gain : vec3(0));
+		else if (hit_data.Hit_Mat.Type == EMISSIVE) { // EMISSIVE
+			return rad + brdf * (delta ? hit_data.Hit_Mat.Color *  hit_data.Hit_Mat.Emissive_Strength : vec3(0));
 		}
 		r.Ray_Origin = hit_data.Hit_Pos + r.Ray_Direction * 0.001;
 	}
 	return rad;
-}
-
-vec3 getAmbientOcclusion(in Ray r) {
-	bool inside = false;
-	float distPercent;
-	for (int b = 0; b < 2; b++){
-		Hit hit_data = intersect_scene(r, inside);
-
-		if (hit_data.Ray_Length >= MAX_DIST) {
-			return vec3(0.0); // MISS;
-		}
-		r.Ray_Direction = normalize(hit_data.Hit_New_Dir + rand3());
-		r.Ray_Origin = hit_data.Hit_Pos + r.Ray_Direction * 0.001;
-		distPercent = min(hit_data.Ray_Length / AO_LENGTH, 1.0);
-	}
-
-	return vec3(distPercent, distPercent, distPercent);
-}
-
-vec3 getDepth(in Ray r) {
-	bool inside = false;
-	Hit hit_data = intersect_scene(r, inside);
-
-	if (hit_data.Ray_Length >= MAX_DIST) {
-		return vec3(0.0); // MISS;
-	}
-
-	return vec3(1 - min(hit_data.Ray_Length / 50.0, 0.9));
 }
 
 Ray getRay(vec2 uv) {
@@ -505,36 +446,18 @@ void main() {
 	if (iFrame < SAMPLES) {
 		rng_initialize(gl_FragCoord.xy, iFrame);
 		vec2 uv = (gl_FragCoord.xy - 1.0 - iResolution.xy /2.0)/max(iResolution.x, iResolution.y);
-		
-		if (RENDER_MODE == 0) {
-			vec3 col;
-			for (int s = 0; s < SPP; s++){
-				col += getRadiance(getRay(uv));
-			}
-			col /= float(SPP);
-			// Accumulation
-			float interval = float(iFrame);
-			if (iFrame <= 1 || !iCameraChange) {
-				col = (texture(iLastFrame, fragTexCoord).xyz * interval + col) / (interval + 1.0);
-			}
-			fragColor = vec4(col , 1);
+	
+		vec3 col;
+		for (int s = 0; s < SPP; s++){
+			col += getRadiance(getRay(uv));
 		}
-		else if (RENDER_MODE == 1) {
-			vec3 col;
-			for (int s = 0; s < SPP; s++){
-				col += getAmbientOcclusion(getRay(uv));
-			}
-			col /= float(SPP);
-			// Accumulation
-			float interval = float(iFrame);
-			if (iFrame <= 1 || !iCameraChange) {
-				col = (texture(iLastFrame, fragTexCoord).xyz * interval + col) / (interval + 1.0);
-			}
-			fragColor = vec4(col , 1);
+		col /= float(SPP);
+		// Accumulation
+		float interval = float(iFrame);
+		if (iFrame <= 1 || !iCameraChange) {
+			col = (texture(iLastFrame, fragTexCoord).xyz * interval + col) / (interval + 1.0);
 		}
-		else if (RENDER_MODE == 2) {
-			fragColor = vec4(getDepth(getRay(uv)) , 1);
-		}
+		fragColor = vec4(col , 1);
 	}
 	else {
 		fragColor = texture(iLastFrame, fragTexCoord);
