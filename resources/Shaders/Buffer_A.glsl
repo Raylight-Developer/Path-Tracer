@@ -1,8 +1,9 @@
 #version 460 core
 
 uniform float iTime;
-uniform uint iFrame;
-uniform vec2 iResolution;
+uniform uint  iFrame;
+uniform vec2  iResolution;
+uniform uint  iRenderMode;
 
 uniform float     iCameraFocalLength;
 uniform float     iCameraSensorWidth;
@@ -32,12 +33,6 @@ out vec4 fragColor;
 
 #define EPSILON     0.001
 #define AO_LENGTH   10.0   // Ambient occlussion
-
-#define PATHTRACE   0
-#define AO_DEBUG    1
-#define DEPTH_DEBUG 2
-
-#define RENDER_MODE DEPTH_DEBUG
 
 // CONSTANTS ---------------------------------------------------------------------------------------
 
@@ -506,7 +501,7 @@ void main() {
 		rng_initialize(gl_FragCoord.xy, iFrame);
 		vec2 uv = (gl_FragCoord.xy - 1.0 - iResolution.xy /2.0)/max(iResolution.x, iResolution.y);
 		
-		if (RENDER_MODE == 0) {
+		if (iRenderMode == 0) {
 			vec3 col;
 			for (int s = 0; s < SPP; s++){
 				col += getRadiance(getRay(uv));
@@ -519,7 +514,7 @@ void main() {
 			}
 			fragColor = vec4(col , 1);
 		}
-		else if (RENDER_MODE == 1) {
+		else if (iRenderMode == 1) {
 			vec3 col;
 			for (int s = 0; s < SPP; s++){
 				col += getAmbientOcclusion(getRay(uv));
@@ -532,7 +527,7 @@ void main() {
 			}
 			fragColor = vec4(col , 1);
 		}
-		else if (RENDER_MODE == 2) {
+		else if (iRenderMode == 2) {
 			fragColor = vec4(getDepth(getRay(uv)) , 1);
 		}
 	}

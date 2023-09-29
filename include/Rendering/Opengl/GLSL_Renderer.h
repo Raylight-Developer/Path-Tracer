@@ -12,22 +12,38 @@
 #include "Texture.h"
 #include "Shader_Program.h"
 
+struct Render_Mode {
+	enum Enum {
+		AMBIENT_OCCLUSION,
+		PATHTRACED,
+		ZBUFFER
+	};
+};
+
+inline Render_Mode::Enum switchRenderMode(Render_Mode::Enum i_current) {
+	int currentIntValue = static_cast<int>(i_current) + 1;
+	if (currentIntValue > 2) return static_cast<Render_Mode::Enum>(0);
+	return static_cast<Render_Mode::Enum>(currentIntValue);
+}
+
 struct GLSL_Renderer {
 	vector<GLfloat> vertices;
 	vector<GLuint> faces;
 
 	double iTime;
 	size_t iFrame;
-	uvec2 iResolution;
+	uvec2  iResolution;
 	
 	Camera camera;
-	bool camera_change;
+	bool   camera_change;
 
 	// Control Input Variables
-	vector<bool> keys;
+	Render_Mode::Enum render_mode;
 	double camera_move_sensitivity;
 	double camera_view_sensitivity;
-	dvec2 last_mouse;
+	bool   right_mouse_down;
+	bool   left_mouse_down;
+	dvec2  last_mouse;
 
 	double last_frame_time;
 	double frame_time;
