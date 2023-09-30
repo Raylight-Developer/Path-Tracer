@@ -6,7 +6,7 @@ Camera::Camera() {
 	width  = 1920;
 	height = 1080;
 
-	position = dvec3(  1 , 2,  8 );
+	position = dvec3(  0 , 1,  5 );
 	rotation = dvec3( -90, 0,  0 );
 	x_vector = dvec3(  1 , 0,  0 );
 	y_vector = dvec3(  0 , 1,  0 );

@@ -41,8 +41,7 @@ struct GLSL_Renderer {
 	Render_Mode::Enum render_mode;
 	double camera_move_sensitivity;
 	double camera_view_sensitivity;
-	bool   right_mouse_down;
-	bool   left_mouse_down;
+	vector<bool> keys;
 	dvec2  last_mouse;
 
 	double last_frame_time;

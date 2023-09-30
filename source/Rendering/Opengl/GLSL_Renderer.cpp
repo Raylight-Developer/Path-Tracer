@@ -22,8 +22,7 @@ GLSL_Renderer::GLSL_Renderer() {
 	render_mode = Render_Mode::PATHTRACED;
 	camera_move_sensitivity = 0.15;
 	camera_view_sensitivity = 0.075;
-	right_mouse_down = false;
-	left_mouse_down  = false;
+	keys = vector(348, false);
 	last_mouse = dvec2(iResolution) / 2.0;
 
 	last_frame_time = 0;
@@ -31,12 +30,12 @@ GLSL_Renderer::GLSL_Renderer() {
 
 	main_vao       = VAO();
 	main_vbo       = VBO();
-	main_ebo          = EBO();
+	main_ebo       = EBO();
 	buffer_tex_a   = FBT();
 	last_frame_tex = FBT();
 	main_fbo       = FBO();
-	main_buffer   = Shader_Program("Buffer A");
-	post_buffer = Shader_Program("Main Image");
+	main_buffer    = Shader_Program("Buffer A");
+	post_buffer    = Shader_Program("Main Image");
 
 	pause = false;
 }
@@ -72,7 +71,7 @@ void GLSL_Renderer::framebuffer_size_callback(GLFWwindow* window, int width, int
 
 void GLSL_Renderer::cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
 	GLSL_Renderer* instance = static_cast<GLSL_Renderer*>(glfwGetWindowUserPointer(window));
-	if (instance->right_mouse_down) {
+	if (instance->keys[GLFW_MOUSE_BUTTON_RIGHT]) {
 		double xoffset = xpos - instance->last_mouse.x;
 		double yoffset = instance->last_mouse.y - ypos;
 
@@ -87,8 +86,8 @@ void GLSL_Renderer::cursor_position_callback(GLFWwindow* window, double xpos, do
 void GLSL_Renderer::mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
 	GLSL_Renderer* instance = static_cast<GLSL_Renderer*>(glfwGetWindowUserPointer(window));
 	if (action == GLFW_PRESS) {
+		instance->keys[button] = true;
 		if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-			instance->right_mouse_down = true;
 			double xpos, ypos;
 			glfwGetCursorPos(window, &xpos, &ypos);
 			instance->last_mouse = dvec2(xpos, ypos);
@@ -96,8 +95,8 @@ void GLSL_Renderer::mouse_button_callback(GLFWwindow* window, int button, int ac
 		}
 	}
 	else if (action == GLFW_RELEASE) {
+		instance->keys[button] = false;
 		if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-			instance->right_mouse_down = false;
 			double xpos, ypos;
 			glfwGetCursorPos(window, &xpos, &ypos);
 			instance->last_mouse = dvec2(xpos, ypos);
@@ -123,36 +122,6 @@ void GLSL_Renderer::scroll_callback(GLFWwindow* window, double xoffset, double y
 void GLSL_Renderer::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	GLSL_Renderer* instance = static_cast<GLSL_Renderer*>(glfwGetWindowUserPointer(window));
 	// Input Handling
-	if (key == GLFW_KEY_D && action == GLFW_PRESS) {
-		instance->camera.f_move(1, 0, 0, instance->camera_move_sensitivity);
-		instance->camera_change = true;
-		instance->iFrame = 0;
-	}
-	if (key == GLFW_KEY_A && action == GLFW_PRESS) {
-		instance->camera.f_move(-1, 0, 0, instance->camera_move_sensitivity);
-		instance->camera_change = true;
-		instance->iFrame = 0;
-	}
-	if ((key == GLFW_KEY_E && action == GLFW_PRESS) || (key == GLFW_KEY_SPACE && action == GLFW_PRESS)) {
-		instance->camera.f_move(0, 1, 0, instance->camera_move_sensitivity);
-		instance->camera_change = true;
-		instance->iFrame = 0;
-	}
-	if ((key == GLFW_KEY_Q && action == GLFW_PRESS) || (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_PRESS)) {
-		instance->camera.f_move(0, -1, 0, instance->camera_move_sensitivity);
-		instance->camera_change = true;
-		instance->iFrame = 0;
-	}
-	if (key == GLFW_KEY_W && action == GLFW_PRESS) {
-		instance->camera.f_move(0, 0, 1, instance->camera_move_sensitivity);
-		instance->camera_change = true;
-		instance->iFrame = 0;
-	}
-	if (key == GLFW_KEY_S && action == GLFW_PRESS) {
-		instance->camera.f_move(0, 0, -1, instance->camera_move_sensitivity);
-		instance->camera_change = true;
-		instance->iFrame = 0;
-	}
 	if (key == GLFW_KEY_R && action == GLFW_PRESS) {
 		instance->recompile();
 	}
@@ -166,6 +135,12 @@ void GLSL_Renderer::key_callback(GLFWwindow* window, int key, int scancode, int 
 	}
 	if (key == GLFW_KEY_P && action == GLFW_PRESS) {
 		instance->pause = !instance->pause;
+	}
+	if (action == GLFW_PRESS) {
+		instance->keys[key] = true;
+	}
+	else if (action == GLFW_RELEASE) {
+		instance->keys[key] = false;
 	}
 }
 
@@ -231,6 +206,36 @@ void GLSL_Renderer::f_init() {
 	glClearColor(0, 0, 0, 1);
 	while (!glfwWindowShouldClose(window)) {
 		if (!pause) {
+			if (keys[GLFW_KEY_D]) {
+				camera.f_move(1, 0, 0, camera_move_sensitivity);
+				camera_change = true;
+				iFrame = 0;
+			}
+			if (keys[GLFW_KEY_A]) {
+				camera.f_move(-1, 0, 0, camera_move_sensitivity);
+				camera_change = true;
+				iFrame = 0;
+			}
+			if (keys[GLFW_KEY_E] || keys[GLFW_KEY_SPACE]) {
+				camera.f_move(0, 1, 0, camera_move_sensitivity);
+				camera_change = true;
+				iFrame = 0;
+			}
+			if (keys[GLFW_KEY_Q] || keys[GLFW_KEY_LEFT_CONTROL]) {
+				camera.f_move(0, -1, 0, camera_move_sensitivity);
+				camera_change = true;
+				iFrame = 0;
+			}
+			if (keys[GLFW_KEY_W]) {
+				camera.f_move(0, 0, 1, camera_move_sensitivity);
+				camera_change = true;
+				iFrame = 0;
+			}
+			if (keys[GLFW_KEY_S]) {
+				camera.f_move(0, 0, -1, camera_move_sensitivity);
+				camera_change = true;
+				iFrame = 0;
+			}
 
 			double Time = glfwGetTime() - iTime;
 			frame_time = glfwGetTime() - last_frame_time;
