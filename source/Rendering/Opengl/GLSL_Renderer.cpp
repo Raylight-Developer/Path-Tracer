@@ -265,9 +265,10 @@ void GLSL_Renderer::f_init() {
 			glUniform3fv(glGetUniformLocation(main_buffer.ID, "iCameraFront"), 1, value_ptr(vec3(camera.z_vector)));
 			glUniform3fv(glGetUniformLocation(main_buffer.ID, "iCameraUp"),    1, value_ptr(vec3(camera.y_vector)));
 			glUniform1i (glGetUniformLocation(main_buffer.ID, "iCameraChange"), camera_change);
-			background_tex.f_bind(GL_TEXTURE0);
-			glUniform1i (glGetUniformLocation(main_buffer.ID, "iHdri"), 0);
+			background_tex.f_bind(GL_TEXTURE1);
+			glUniform1i (glGetUniformLocation(main_buffer.ID, "iHdri"), 1);
 			last_frame_tex.f_bind(GL_TEXTURE0);
+			glUniform1i (glGetUniformLocation(main_buffer.ID, "iLastFrame"), 0);
 
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
@@ -282,6 +283,7 @@ void GLSL_Renderer::f_init() {
 			glUniform1ui(glGetUniformLocation(post_buffer.ID, "iFrame"),      GLuint(iFrame));
 			glUniform2fv(glGetUniformLocation(post_buffer.ID, "iResolution"), 1, value_ptr(vec2(iResolution)));
 			buffer_tex_a.f_bind(GL_TEXTURE0);
+			glUniform1i (glGetUniformLocation(main_buffer.ID, "iRawFrame"), 0);
 
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
