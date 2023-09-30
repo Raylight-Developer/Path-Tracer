@@ -152,6 +152,15 @@ void GLSL_Renderer::f_init() {
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	GLFWwindow* window = glfwCreateWindow(iResolution.x, iResolution.y, "GLSL Renderer", NULL, NULL);
+	
+	Image icon = Image();
+	if (icon.f_load("./resources/Icon.png", File_Extension::PNG)) {
+		GLFWimage image_icon;
+		image_icon.width = icon.width;
+		image_icon.height = icon.height;
+		image_icon.pixels = icon.data;
+		glfwSetWindowIcon(window, 1, &image_icon);
+	}
 
 	if (window == NULL) {
 		cout << "Failed to create GLFW window" << endl;
@@ -201,7 +210,7 @@ void GLSL_Renderer::f_init() {
 	last_frame_tex.f_init(iResolution);
 
 	Texture background_tex = Texture();
-	//background_tex.f_init("D:/UVG/Path-Tracer/resources/Background.exr", File_Extension::EXR);
+	background_tex.f_init("D:/UVG/Path-Tracer/resources/Background.png", File_Extension::PNG);
 
 	glClearColor(0, 0, 0, 1);
 	while (!glfwWindowShouldClose(window)) {
@@ -256,8 +265,8 @@ void GLSL_Renderer::f_init() {
 			glUniform3fv(glGetUniformLocation(main_buffer.ID, "iCameraFront"), 1, value_ptr(vec3(camera.z_vector)));
 			glUniform3fv(glGetUniformLocation(main_buffer.ID, "iCameraUp"),    1, value_ptr(vec3(camera.y_vector)));
 			glUniform1i (glGetUniformLocation(main_buffer.ID, "iCameraChange"), camera_change);
-			//background_tex.f_bind(GL_TEXTURE1);
-			//glUniform1i (glGetUniformLocation(main_buffer.ID, "iHdri"), 0);
+			background_tex.f_bind(GL_TEXTURE0);
+			glUniform1i (glGetUniformLocation(main_buffer.ID, "iHdri"), 0);
 			last_frame_tex.f_bind(GL_TEXTURE0);
 
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
