@@ -1,4 +1,5 @@
 # Path Tracer
+![image](https://github.com/AleMar21430/Path-Tracer/assets/99276653/901b9c9c-46da-4b25-89c3-854982b88e0d)
 ![image](https://github.com/AleMar21430/Path-Tracer/assets/99276653/430230d8-ea3f-4dd7-8ddb-4025daaad67b)
 
 ```
