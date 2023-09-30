@@ -2,7 +2,6 @@
 	"name": "path-tracer",
 	"version-string": "0.1",
 	"dependencies": [
-		"openexr",
 		"glfw3",
 		"glm"
 	],

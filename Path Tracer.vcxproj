@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="external\stb_image.h" />
     <ClInclude Include="include\I-O\File.h" />
     <ClInclude Include="include\Include.h" />
     <ClInclude Include="include\Math\Lace.h" />

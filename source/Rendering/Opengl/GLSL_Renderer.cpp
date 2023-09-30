@@ -19,9 +19,10 @@ GLSL_Renderer::GLSL_Renderer() {
 	camera = Camera();
 	camera_change = false;
 
-	keys = vector(348, false);
+	render_mode = Render_Mode::PATHTRACED;
 	camera_move_sensitivity = 0.15;
 	camera_view_sensitivity = 0.075;
+	keys = vector(348, false);
 	last_mouse = dvec2(iResolution) / 2.0;
 
 	last_frame_time = 0;
@@ -29,12 +30,12 @@ GLSL_Renderer::GLSL_Renderer() {
 
 	main_vao       = VAO();
 	main_vbo       = VBO();
-	main_ebo          = EBO();
+	main_ebo       = EBO();
 	buffer_tex_a   = FBT();
 	last_frame_tex = FBT();
 	main_fbo       = FBO();
-	main_buffer   = Shader_Program("Buffer A");
-	post_buffer = Shader_Program("Main Image");
+	main_buffer    = Shader_Program("Buffer A");
+	post_buffer    = Shader_Program("Main Image");
 
 	pause = false;
 }
@@ -120,8 +121,14 @@ void GLSL_Renderer::scroll_callback(GLFWwindow* window, double xoffset, double y
 
 void GLSL_Renderer::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	GLSL_Renderer* instance = static_cast<GLSL_Renderer*>(glfwGetWindowUserPointer(window));
+	// Input Handling
 	if (key == GLFW_KEY_R && action == GLFW_PRESS) {
 		instance->recompile();
+	}
+	if (key == GLFW_KEY_V && action == GLFW_PRESS) {
+		instance->render_mode = switchRenderMode(instance->render_mode);
+		instance->camera_change = true;
+		instance->iFrame = 0;
 	}
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, GLFW_TRUE);
@@ -145,6 +152,15 @@ void GLSL_Renderer::f_init() {
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	GLFWwindow* window = glfwCreateWindow(iResolution.x, iResolution.y, "GLSL Renderer", NULL, NULL);
+	
+	Image icon = Image();
+	if (icon.f_load("./resources/Icon.png", File_Extension::PNG)) {
+		GLFWimage image_icon;
+		image_icon.width = icon.width;
+		image_icon.height = icon.height;
+		image_icon.pixels = icon.data;
+		glfwSetWindowIcon(window, 1, &image_icon);
+	}
 
 	if (window == NULL) {
 		cout << "Failed to create GLFW window" << endl;
@@ -194,14 +210,13 @@ void GLSL_Renderer::f_init() {
 	last_frame_tex.f_init(iResolution);
 
 	Texture background_tex = Texture();
-	//background_tex.f_init("D:/UVG/Path-Tracer/resources/Background.exr", File_Extension::EXR);
+	background_tex.f_init("D:/UVG/Path-Tracer/resources/Background.png", File_Extension::PNG);
 
 	glClearColor(0, 0, 0, 1);
 	while (!glfwWindowShouldClose(window)) {
 		if (!pause) {
-			// Input Handling
 			if (keys[GLFW_KEY_D]) {
-				camera.f_move( 1, 0, 0, camera_move_sensitivity);
+				camera.f_move(1, 0, 0, camera_move_sensitivity);
 				camera_change = true;
 				iFrame = 0;
 			}
@@ -211,7 +226,7 @@ void GLSL_Renderer::f_init() {
 				iFrame = 0;
 			}
 			if (keys[GLFW_KEY_E] || keys[GLFW_KEY_SPACE]) {
-				camera.f_move(0,  1, 0, camera_move_sensitivity);
+				camera.f_move(0, 1, 0, camera_move_sensitivity);
 				camera_change = true;
 				iFrame = 0;
 			}
@@ -221,7 +236,7 @@ void GLSL_Renderer::f_init() {
 				iFrame = 0;
 			}
 			if (keys[GLFW_KEY_W]) {
-				camera.f_move(0, 0,  1, camera_move_sensitivity);
+				camera.f_move(0, 0, 1, camera_move_sensitivity);
 				camera_change = true;
 				iFrame = 0;
 			}
@@ -234,7 +249,6 @@ void GLSL_Renderer::f_init() {
 			double Time = glfwGetTime() - iTime;
 			frame_time = glfwGetTime() - last_frame_time;
 
-
 			main_fbo.f_bind();
 			glClear(GL_COLOR_BUFFER_BIT);
 			main_buffer.f_activate();
@@ -243,6 +257,7 @@ void GLSL_Renderer::f_init() {
 			glUniform1f (glGetUniformLocation(main_buffer.ID, "iTime"),       GLfloat(Time));
 			glUniform1ui(glGetUniformLocation(main_buffer.ID, "iFrame"),      GLuint(iFrame));
 			glUniform2fv(glGetUniformLocation(main_buffer.ID, "iResolution"), 1, value_ptr(vec2(iResolution)));
+			glUniform1ui(glGetUniformLocation(main_buffer.ID, "iRenderMode"), static_cast<GLuint>(render_mode));
 
 			glUniform1f (glGetUniformLocation(main_buffer.ID, "iCameraFocalLength"), GLfloat(camera.focal_length));
 			glUniform1f (glGetUniformLocation(main_buffer.ID, "iCameraSensorWidth"), GLfloat(camera.sensor_width));
@@ -250,8 +265,8 @@ void GLSL_Renderer::f_init() {
 			glUniform3fv(glGetUniformLocation(main_buffer.ID, "iCameraFront"), 1, value_ptr(vec3(camera.z_vector)));
 			glUniform3fv(glGetUniformLocation(main_buffer.ID, "iCameraUp"),    1, value_ptr(vec3(camera.y_vector)));
 			glUniform1i (glGetUniformLocation(main_buffer.ID, "iCameraChange"), camera_change);
-			//background_tex.f_bind(GL_TEXTURE1);
-			//glUniform1i (glGetUniformLocation(main_buffer.ID, "iHdri"), 0);
+			background_tex.f_bind(GL_TEXTURE0);
+			glUniform1i (glGetUniformLocation(main_buffer.ID, "iHdri"), 0);
 			last_frame_tex.f_bind(GL_TEXTURE0);
 
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
