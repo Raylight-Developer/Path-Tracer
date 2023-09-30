@@ -500,21 +500,9 @@ void main() {
 	if (iFrame < SAMPLES) {
 		rng_initialize(gl_FragCoord.xy, iFrame);
 		vec2 uv = (gl_FragCoord.xy - 1.0 - iResolution.xy /2.0)/max(iResolution.x, iResolution.y);
-		
+
+		// -------------------------- Ambient Occlusion
 		if (iRenderMode == 0) {
-			vec3 col;
-			for (int s = 0; s < SPP; s++){
-				col += getRadiance(getRay(uv));
-			}
-			col /= float(SPP);
-			// Accumulation
-			float interval = float(iFrame);
-			if (iFrame <= 1 || !iCameraChange) {
-				col = (texture(iLastFrame, fragTexCoord).xyz * interval + col) / (interval + 1.0);
-			}
-			fragColor = vec4(col , 1);
-		}
-		else if (iRenderMode == 1) {
 			vec3 col;
 			for (int s = 0; s < SPP; s++){
 				col += getAmbientOcclusion(getRay(uv));
@@ -527,6 +515,21 @@ void main() {
 			}
 			fragColor = vec4(col , 1);
 		}
+		// -------------------------- PathTracer
+		else if (iRenderMode == 1) {
+			vec3 col;
+			for (int s = 0; s < SPP; s++){
+				col += getRadiance(getRay(uv));
+			}
+			col /= float(SPP);
+			// Accumulation
+			float interval = float(iFrame);
+			if (iFrame <= 1 || !iCameraChange) {
+				col = (texture(iLastFrame, fragTexCoord).xyz * interval + col) / (interval + 1.0);
+			}
+			fragColor = vec4(col, 1);
+		}
+		// -------------------------- Z-Depth
 		else if (iRenderMode == 2) {
 			fragColor = vec4(getDepth(getRay(uv)) , 1);
 		}
