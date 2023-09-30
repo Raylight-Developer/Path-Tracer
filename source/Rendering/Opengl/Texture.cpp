@@ -16,7 +16,7 @@ void Texture::f_init(const string& i_image_path, const File_Extension::Enum& i_t
 }
 
 void Texture::f_bind(const GLenum& i_texture_id) {
-	//glActiveTexture(i_texture_id);
+	glActiveTexture(i_texture_id);
 	glBindTexture(GL_TEXTURE_2D, ID);
 }
 

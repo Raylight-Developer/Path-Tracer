@@ -5,15 +5,15 @@ uniform uint  iFrame;
 uniform vec2  iResolution;
 uniform uint  iRenderMode;
 
-uniform float     iCameraFocalLength;
-uniform float     iCameraSensorWidth;
-uniform vec3      iCameraPos;
-uniform vec3      iCameraFront;
-uniform vec3      iCameraUp;
-uniform bool      iCameraChange;
-uniform sampler2D iHdri;
+uniform float iCameraFocalLength;
+uniform float iCameraSensorWidth;
+uniform vec3  iCameraPos;
+uniform vec3  iCameraFront;
+uniform vec3  iCameraUp;
+uniform bool  iCameraChange;
 
 uniform sampler2D iLastFrame;
+uniform sampler2D iHdri;
 
 in vec2 fragCoord;
 in vec2 fragTexCoord;
@@ -26,11 +26,14 @@ out vec4 fragColor;
 #define PI          3.14159265359
 #define DEG_RAD     0.01745329252
 #define M_E         2.71828182846
+
+#define HDRI_STRENGTH 1.0
+#define AO_LENGTH     5.0
+
 #define MAX_DIST    5000.0
 #define RAY_BOUNCES 6
 #define SPP         1
 #define SAMPLES     64
-#define AO_LENGTH   5.0
 
 #define EPSILON     0.001
 
@@ -73,7 +76,7 @@ vec3 nrand3(float sigma, vec3 mean) {
 	vec4 Z = rand4();
 	return mean + sigma * sqrt(-2.0 * log(Z.xxy)) * vec3(cos(TWO_PI * Z.z), sin(TWO_PI * Z.z), cos(TWO_PI * Z.w));
 }
-vec3 randVec() {
+vec3 randvec3() {
 	vec3 vector = rand3();
 	float x = mapFloat(vector.x, 0, 1, -1, 1);
 	float y = mapFloat(vector.y, 0, 1, -1, 1);
@@ -98,6 +101,32 @@ float fresnel(float iori, float iort, float cosi, float cost){
 	return (rpar + rper) / 2.;
 }
 
+mat3 eulerToRot(vec3 euler) {
+	const float Yaw =   euler.x * DEG_RAD;
+	const float Pitch = euler.y * DEG_RAD;
+	const float Roll =  euler.z * DEG_RAD;
+
+	const mat3 yawMat = mat3 (
+		 cos(Yaw) , 0 , sin(Yaw) ,
+		 0        , 1 , 0        ,
+		-sin(Yaw) , 0 , cos(Yaw)
+	);
+
+	const mat3 pitchMat = mat3 (
+		1 , 0          ,  0          ,
+		0 , cos(Pitch) , -sin(Pitch) ,
+		0 , sin(Pitch) ,  cos(Pitch)
+	);
+
+	const mat3 rollMat = mat3 (
+		cos(Roll) , -sin(Roll) , 0 ,
+		sin(Roll) ,  cos(Roll) , 0 ,
+		0         ,  0         , 1
+	);
+
+	return pitchMat * yawMat * rollMat;
+}
+
 // STRUCTS ---------------------------------------------------------------------------------------
 
 #define DIFFUSE  0
@@ -120,14 +149,14 @@ struct Bsdf {
 	float Reflection_Roughness;
 	float Reflection_Anisotropy;
 	float Reflection_Rotation;
-	float Subsurface_Radius;
+	float Subsurface_Distance;
 	float Subsurface_IOR;
 	float Subsurface_Anisotropy;
 	float Emissive_Strength;
 	float Iridescent;
 	float Iridescent_Roughness;
 	float Clearcoat_Roughness;
-	float Fuzz_Angle;
+	float Velvet_Angle;
 	float Alpha;
 
 	vec3 Diffuse_Color;
@@ -138,8 +167,9 @@ struct Bsdf {
 	vec3 Iridescent_Color_A;
 	vec3 Iridescent_Color_B;
 	vec3 Clearcoat_Color;
-	vec3 Fuzz_Color;
+	vec3 Velvet_Color;
 };
+
 struct Sun_Light {
 	float Intensity;
 	vec3  Color;
@@ -177,24 +207,24 @@ struct Tri {
 
 // SCENE ---------------------------------------------------------------------------------------
 #define SPHERE_COUNT 7
-#define QUAD_COUNT   4
+#define QUAD_COUNT   1
 
 const Sphere Scene_Spheres[SPHERE_COUNT] = Sphere[SPHERE_COUNT](
 		// POSITION                      , RADIUS  ,          Type     , Color              , Emissiveness, Roughness, IOR
 	Sphere(vec3( -1    ,  0.5   ,  0    ), 0.4     , Material(DIFFUSE  , vec3(0.5, 0.5, 0.5), 0           , 0        , 1.2 )),
-	Sphere(vec3( -1    ,  1.5   ,  0    ), 0.4     , Material(DIFFUSE  , vec3(1  , 0  , 0  ), 0           , 0        , 1.2 )),
-	Sphere(vec3(  0    ,  0.5   ,  0    ), 0.4     , Material(SPECULAR , vec3(0.5, 0.5, 0.5), 0           , 0        , 1.2 )),
-	Sphere(vec3(  0    ,  1.5   ,  0    ), 0.4     , Material(SPECULAR , vec3(0  , 1  , 0  ), 0           , 0        , 1.2 )),
-	Sphere(vec3(  1    ,  0.5   ,  0    ), 0.4     , Material(GLASS    , vec3(0.5, 0.5, 0.5), 0           , 0        , 1.2 )),
-	Sphere(vec3(  1    ,  1.5   ,  0    ), 0.4     , Material(GLASS    , vec3(0  , 0  , 1  ), 0           , 0        , 1.2 )),
-	Sphere(vec3(  0    ,  1.5   ,  5    ), 0.4     , Material(EMISSIVE , vec3(1  , 1  , 1  ), 250         , 0        , 1.2 ))
+	Sphere(vec3( -1    ,  1.5   ,  0    ), 0.4     , Material(DIFFUSE  , vec3(1  , 0.5, 0.5), 0           , 0        , 1.2 )),
+	Sphere(vec3(  0    ,  0.5   ,  0    ), 0.4     , Material(SPECULAR , vec3(1  , 1  , 1  ), 0           , 0        , 1.2 )),
+	Sphere(vec3(  0    ,  1.5   ,  0    ), 0.4     , Material(SPECULAR , vec3(0.5, 1  , 0.5), 0           , 0        , 1.2 )),
+	Sphere(vec3(  1    ,  0.5   ,  0    ), 0.4     , Material(GLASS    , vec3(1  , 1  , 1  ), 0           , 0        , 1.2 )),
+	Sphere(vec3(  1    ,  1.5   ,  0    ), 0.4     , Material(GLASS    , vec3(0.5, 0.5, 1  ), 0           , 0        , 1.2 )),
+	Sphere(vec3(  0    ,  4.5   ,  0    ), 0.5     , Material(EMISSIVE , vec3(1  , 1  , 1  ), 15          , 0        , 1.2 ))
 );
 const Quad Scene_Quads[QUAD_COUNT] = Quad[QUAD_COUNT](
 	// VERT_A               , VERT_B               , VERT_C               , VERT_D                 ,          Type     , Color              , Emissiveness, Roughness, IOR
-	Quad(vec3( -5 , 0  , -5  ), vec3(  5 , 0  , -5  ), vec3(  5 , 0  ,  5  ), vec3( -5 , 0  ,  5  ), Material(DIFFUSE  , vec3(0.5, 0.5, 0.5), 0           , 0        , 1.2 )),
-	Quad(vec3(  5 , 0  , -5  ), vec3(  5 , 0  ,  5  ), vec3(  5 , 10 ,  5  ), vec3(  5 , 10 , -5  ), Material(DIFFUSE  , vec3(1  , 0  , 0  ), 0           , 0        , 1.2 )),
-	Quad(vec3( -5 , 0  , -5  ), vec3( -5 , 0  ,  5  ), vec3( -5 , 10 ,  5  ), vec3( -5 , 10 , -5  ), Material(DIFFUSE  , vec3(0  , 1  , 0  ), 0           , 0        , 1.2 )),
-	Quad(vec3( -5 , 0  , -5  ), vec3(  5 , 0  , -5  ), vec3(  5 , 10 ,  5  ), vec3( -5 , 10 ,  5  ), Material(DIFFUSE  , vec3(0.5, 0.5, 0.5), 0           , 0        , 1.2 ))
+	Quad(vec3( -5 , 0  , -5  ), vec3(  5 , 0  , -5  ), vec3(  5 , 0  ,  5  ), vec3( -5 , 0  ,  5  ), Material(DIFFUSE  , vec3(0.5, 0.5, 0.5), 0           , 0        , 1.0 )) // Floor
+	// Quad(vec3(  5 , 0  , -5  ), vec3(  5 , 0  ,  5  ), vec3(  5 , 10 ,  5  ), vec3(  5 , 10 , -5  ), Material(DIFFUSE  , vec3(1  , 0  , 0  ), 0           , 0        , 1.0 )), // Right Wall
+	// Quad(vec3( -5 , 0  , -5  ), vec3( -5 , 0  ,  5  ), vec3( -5 , 10 ,  5  ), vec3( -5 , 10 , -5  ), Material(DIFFUSE  , vec3(0  , 1  , 0  ), 0           , 0        , 1.0 )), // Left  Wall
+	// Quad(vec3( -5 , 0  , -5  ), vec3(  5 , 0  , -5  ), vec3(  5 , 10 ,  5  ), vec3( -5 , 10 ,  5  ), Material(DIFFUSE  , vec3(1  , 1  , 1  ), 0           , 0        , 1.0 ))  // Ceiling
 );
 
 // INTERSECTIONS ---------------------------------------------------------------------------------------
@@ -331,36 +361,15 @@ vec3 cone_uniform(in float theta, in vec3 dir) {
 		dir  * cos_theta);
 }
 
-vec3 sampleLights(const in Hit hit_data, in int object_id, out float inv_prob) {
-	if (object_id < SPHERE_COUNT) {
-		Sphere sphere = Scene_Spheres[object_id];
-		vec3 dir = normalize(sphere.Position - hit_data.Hit_Pos);
-		float dist = length(sphere.Position - hit_data.Hit_Pos);
-		float theta = asin(sphere.Diameter / dist);
-		Ray r = Ray(hit_data.Hit_Pos + hit_data.Hit_New_Dir * 0.0001, cone_uniform(theta, dir)); //epsilon to make sure it self intersects
-		bool inside;
+vec3 getEnvironmentHDR(in Ray r) {
+	r.Ray_Direction = eulerToRot(vec3(0,-90,0)) * r.Ray_Direction;
 
-		inv_prob = (2.0 * (1.0 - cos(theta)));
+	float phi = atan(r.Ray_Direction.y, r.Ray_Direction.x);
+	float theta = acos(r.Ray_Direction.z);
+	float u = phi / TWO_PI + 0.5;
+	float v = theta / PI;
 
-		Hit hit = intersect_scene(r, inside);
-		if (hit.Hit_Mat.Type == EMISSIVE && hit.Hit_Obj == object_id) {
-			return sphere.Mat.Color * sphere.Mat.Emissive_Strength * max(0.0, dot(r.Ray_Direction, hit_data.Hit_New_Dir)) * inv_prob;
-		}
-	}
-	else if (object_id < SPHERE_COUNT + QUAD_COUNT) {
-		Quad quad = Scene_Quads[object_id - SPHERE_COUNT];
-		vec3 dir = normalize(quad.v0 - hit_data.Hit_Pos);
-		float dist = length(quad.v0 - hit_data.Hit_Pos);
-		float theta = asin(1.0 / dist);
-		Ray r = Ray(hit_data.Hit_Pos + hit_data.Hit_New_Dir * 0.0001, dir); //epsilon to make sure it self intersects
-		bool inside;
-		inv_prob = (2.0 * (1.0 - cos(theta)));
-		Hit hit = intersect_scene(r, inside);
-		if (hit.Hit_Mat.Emissive_Strength > 0 && hit.Hit_Obj == (object_id - SPHERE_COUNT)) {
-			return quad.Mat.Color * quad.Mat.Emissive_Strength * max(0.0, dot(r.Ray_Direction, hit_data.Hit_New_Dir)) * inv_prob;
-		}
-	}
-	return vec3(0);
+	return texture(iHdri, vec2(u,v)).rgb * HDRI_STRENGTH;
 }
 
 vec3 getAmbientOcclusion(in Ray r) {
@@ -378,6 +387,40 @@ vec3 getAmbientOcclusion(in Ray r) {
 	return vec3(distPercent, distPercent, distPercent);
 }
 
+vec3 sampleLights(const in Hit hit_data, in int object_id, out float inv_prob) {
+	if (object_id < SPHERE_COUNT) {
+		Sphere sphere = Scene_Spheres[object_id];
+		vec3 dir = normalize(sphere.Position - hit_data.Hit_Pos);
+		float dist = length(sphere.Position - hit_data.Hit_Pos);
+		float theta = asin(sphere.Diameter / dist);
+		Ray r = Ray(hit_data.Hit_Pos + hit_data.Hit_New_Dir * EPSILON, cone_uniform(theta, dir)); //epsilon to make sure it self intersects
+		bool inside;
+
+		inv_prob = (2.0 * (1.0 - cos(theta)));
+
+		Hit hit = intersect_scene(r, inside);
+		if (hit.Hit_Mat.Type == EMISSIVE && hit.Hit_Obj == object_id) {
+			return sphere.Mat.Color * sphere.Mat.Emissive_Strength * max(0.0, dot(r.Ray_Direction, hit_data.Hit_New_Dir)) * inv_prob;
+		}
+	}
+	else if (object_id < SPHERE_COUNT + QUAD_COUNT) {
+		Quad quad = Scene_Quads[object_id - SPHERE_COUNT];
+		vec3 dir = normalize(quad.v0 - hit_data.Hit_Pos);
+		float dist = length(quad.v0 - hit_data.Hit_Pos);
+		float theta = asin(1.0 / dist);
+		Ray r = Ray(hit_data.Hit_Pos + hit_data.Hit_New_Dir * EPSILON, dir); //epsilon to make sure it self intersects
+		bool inside;
+		inv_prob = (2.0 * (1.0 - cos(theta)));
+		Hit hit = intersect_scene(r, inside);
+		if (hit.Hit_Mat.Emissive_Strength > 0 && hit.Hit_Obj == (object_id - SPHERE_COUNT)) {
+			return quad.Mat.Color * quad.Mat.Emissive_Strength * max(0.0, dot(r.Ray_Direction, hit_data.Hit_New_Dir)) * inv_prob;
+		}
+	}
+	else {
+		return getEnvironmentHDR(Ray(hit_data.Hit_Pos + hit_data.Hit_New_Dir * EPSILON, hit_data.Hit_New_Dir));
+	}
+}
+
 vec3 getRadiance(in Ray r){
 	vec3 rad = vec3(0);
 	vec3 brdf = vec3(1);
@@ -388,7 +431,7 @@ vec3 getRadiance(in Ray r){
 		Hit hit_data = intersect_scene(r, inside);
 
 		if (hit_data.Ray_Length >= MAX_DIST) {
-			return rad + brdf * vec3(0.0, 0.0, 0.0); // MISS;
+			return rad + brdf * getEnvironmentHDR(r); // MISS;
 		}
 		float prob = 0.;
 		if (hit_data.Hit_Mat.Type == DIFFUSE) {
