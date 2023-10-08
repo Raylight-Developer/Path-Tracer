@@ -15,9 +15,10 @@ GLSL_Renderer::GLSL_Renderer() {
 	iTime = 0.0;
 	iFrame = 0;
 	iResolution = uvec2(1920, 1080);
+	iBidirectional = true;
+	iCameraChange = false;
 
 	camera = Camera();
-	camera_change = false;
 
 	render_mode = Render_Mode::PATHTRACED;
 	camera_move_sensitivity = 0.15;
@@ -50,7 +51,7 @@ void GLSL_Renderer::recompile() {
 	last_frame_tex.f_resize(iResolution);
 
 	//camera = Camera();
-	camera_change = true;
+	iCameraChange = true;
 	iFrame = 0;
 	iTime = glfwGetTime();
 }
@@ -78,7 +79,7 @@ void GLSL_Renderer::cursor_position_callback(GLFWwindow* window, double xpos, do
 		instance->last_mouse = dvec2(xpos, ypos);
 
 		instance->camera.f_rotate(xoffset * instance->camera_view_sensitivity, yoffset * instance->camera_view_sensitivity);
-		instance->camera_change = true;
+		instance->iCameraChange = true;
 		instance->iFrame = 0;
 	}
 }
@@ -108,12 +109,12 @@ void GLSL_Renderer::mouse_button_callback(GLFWwindow* window, int button, int ac
 void GLSL_Renderer::scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 	GLSL_Renderer* instance = static_cast<GLSL_Renderer*>(glfwGetWindowUserPointer(window));
 	if (yoffset < 0) {
-		instance->camera_change = true;
+		instance->iCameraChange = true;
 		instance->iFrame = 0;
 		instance->camera_move_sensitivity /= 1.1;
 	}
 	if (yoffset > 0) {
-		instance->camera_change = true;
+		instance->iCameraChange = true;
 		instance->iFrame = 0;
 		instance->camera_move_sensitivity *= 1.1;
 	}
@@ -127,12 +128,17 @@ void GLSL_Renderer::key_callback(GLFWwindow* window, int key, int scancode, int 
 	}
 	if (key == GLFW_KEY_V && action == GLFW_PRESS) {
 		instance->render_mode = switchRenderMode(instance->render_mode);
-		instance->camera_change = true;
+		instance->iCameraChange = true;
+		instance->iFrame = 0;
+	}
+	if (key == GLFW_KEY_B && action == GLFW_PRESS) {
+		instance->iBidirectional = !instance->iBidirectional;
+		instance->iCameraChange = true;
 		instance->iFrame = 0;
 	}
 	if (key == GLFW_KEY_C && action == GLFW_PRESS) {
 		instance->camera = Camera();
-		instance->camera_change = true;
+		instance->iCameraChange = true;
 		instance->iFrame = 0;
 	}
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
@@ -222,32 +228,32 @@ void GLSL_Renderer::f_init() {
 		if (!pause) {
 			if (keys[GLFW_KEY_D]) {
 				camera.f_move(1, 0, 0, camera_move_sensitivity);
-				camera_change = true;
+				iCameraChange = true;
 				iFrame = 0;
 			}
 			if (keys[GLFW_KEY_A]) {
 				camera.f_move(-1, 0, 0, camera_move_sensitivity);
-				camera_change = true;
+				iCameraChange = true;
 				iFrame = 0;
 			}
 			if (keys[GLFW_KEY_E] || keys[GLFW_KEY_SPACE]) {
 				camera.f_move(0, 1, 0, camera_move_sensitivity);
-				camera_change = true;
+				iCameraChange = true;
 				iFrame = 0;
 			}
 			if (keys[GLFW_KEY_Q] || keys[GLFW_KEY_LEFT_CONTROL]) {
 				camera.f_move(0, -1, 0, camera_move_sensitivity);
-				camera_change = true;
+				iCameraChange = true;
 				iFrame = 0;
 			}
 			if (keys[GLFW_KEY_W]) {
 				camera.f_move(0, 0, 1, camera_move_sensitivity);
-				camera_change = true;
+				iCameraChange = true;
 				iFrame = 0;
 			}
 			if (keys[GLFW_KEY_S]) {
 				camera.f_move(0, 0, -1, camera_move_sensitivity);
-				camera_change = true;
+				iCameraChange = true;
 				iFrame = 0;
 			}
 
@@ -263,13 +269,14 @@ void GLSL_Renderer::f_init() {
 			glUniform1ui(glGetUniformLocation(main_buffer.ID, "iFrame"),      GLuint(iFrame));
 			glUniform2fv(glGetUniformLocation(main_buffer.ID, "iResolution"), 1, value_ptr(vec2(iResolution)));
 			glUniform1ui(glGetUniformLocation(main_buffer.ID, "iRenderMode"), static_cast<GLuint>(render_mode));
+			glUniform1i (glGetUniformLocation(main_buffer.ID, "iBidirectional"), iBidirectional);
 
 			glUniform1f (glGetUniformLocation(main_buffer.ID, "iCameraFocalLength"), GLfloat(camera.focal_length));
 			glUniform1f (glGetUniformLocation(main_buffer.ID, "iCameraSensorWidth"), GLfloat(camera.sensor_width));
 			glUniform3fv(glGetUniformLocation(main_buffer.ID, "iCameraPos"),   1, value_ptr(vec3(camera.position)));
 			glUniform3fv(glGetUniformLocation(main_buffer.ID, "iCameraFront"), 1, value_ptr(vec3(camera.z_vector)));
 			glUniform3fv(glGetUniformLocation(main_buffer.ID, "iCameraUp"),    1, value_ptr(vec3(camera.y_vector)));
-			glUniform1i (glGetUniformLocation(main_buffer.ID, "iCameraChange"), camera_change);
+			glUniform1i (glGetUniformLocation(main_buffer.ID, "iCameraChange"), iCameraChange);
 			background_tex.f_bind(GL_TEXTURE1);
 			glUniform1i (glGetUniformLocation(main_buffer.ID, "iHdri"), 1);
 			last_frame_tex.f_bind(GL_TEXTURE0);
@@ -293,7 +300,7 @@ void GLSL_Renderer::f_init() {
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 			iFrame++;
-			camera_change = false;
+			iCameraChange = false;
 		}
 		glfwSwapBuffers(window);
 		glfwPollEvents();
