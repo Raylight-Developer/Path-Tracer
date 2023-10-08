@@ -13,7 +13,6 @@ uniform vec3  iCameraFront;
 uniform vec3  iCameraUp;
 uniform bool  iCameraChange;
 
-uniform sampler2D iLastFrame;
 uniform sampler2D iHdri;
 
 in vec2 fragCoord;
@@ -509,11 +508,6 @@ void main() {
 				}
 			}
 			col /= float(SPP * SPP);
-			// Accumulation
-			float interval = float(iFrame);
-			if (iFrame <= 1 || !iCameraChange) {
-				col = (texture(iLastFrame, fragTexCoord).xyz * interval + col) / (interval + 1.0);
-			}
 			fragColor = vec4(col , 1);
 		}
 		// -------------------------- PathTracer
@@ -527,11 +521,6 @@ void main() {
 			}
 
 			col /= float(SPP * SPP);
-			// Accumulation
-			float interval = float(iFrame);
-			if (iFrame <= 1 || !iCameraChange) {
-				col = (texture(iLastFrame, fragTexCoord).xyz * interval + col) / (interval + 1.0);
-			}
 			fragColor = vec4(col, 1);
 		}
 		// -------------------------- Z-Depth
@@ -540,6 +529,6 @@ void main() {
 		}
 	}
 	else {
-		fragColor = texture(iLastFrame, fragTexCoord);
+		fragColor = vec4(0);
 	}
 }
