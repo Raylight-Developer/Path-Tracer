@@ -130,6 +130,11 @@ void GLSL_Renderer::key_callback(GLFWwindow* window, int key, int scancode, int 
 		instance->camera_change = true;
 		instance->iFrame = 0;
 	}
+	if (key == GLFW_KEY_C && action == GLFW_PRESS) {
+		instance->camera = Camera();
+		instance->camera_change = true;
+		instance->iFrame = 0;
+	}
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, GLFW_TRUE);
 	}
