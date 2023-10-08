@@ -34,7 +34,7 @@ out vec4 fragColor;
 #define MAX_DIST      5000.0
 #define RAY_BOUNCES   4
 #define SPP           1
-#define SAMPLES       512
+#define SAMPLES       2048
 
 #define EPSILON       0.001
 
@@ -81,8 +81,6 @@ vec3 nrand3(float sigma, vec3 mean) {
 void rng_initialize(vec2 pix, uint frame) {
 	pixel = uvec2(pix);
 	white_noise_seed = uvec4(pixel, frame, uint(pixel.x) + uint(pixel.y));
-	vec3 rng = rand3();
-	rgb_noise = vec3(mapFloat(0, 1 ,-1, 1 , rng.x),mapFloat(0, 1 ,-1, 1 , rng.y),mapFloat(0, 1 ,-1, 1 , rng.z));
 }
 
 float snell (float sin_theta, float iori, float iort) {
@@ -207,25 +205,24 @@ struct Tri {
 };
 
 // SCENE ---------------------------------------------------------------------------------------
-#define SPHERE_COUNT 7
-#define QUAD_COUNT   4
+#define SPHERE_COUNT 3
+#define QUAD_COUNT   7
 
 const Sphere Scene_Spheres[SPHERE_COUNT] = Sphere[SPHERE_COUNT](
 		// POSITION                      , RADIUS  ,          Type     , Color              , Emissiveness, Roughness, IOR
-	Sphere(vec3( -1    ,  0.5   ,  0    ), 0.4     , Material(DIFFUSE  , vec3(0.8, 0.8, 0.8), 0           , 0        , 1.2 )),
-	Sphere(vec3( -1    ,  1.5   ,  0    ), 0.4     , Material(DIFFUSE  , vec3(1  , 0.8, 0.8), 0           , 0        , 1.2 )),
-	Sphere(vec3(  0    ,  0.5   ,  0    ), 0.4     , Material(SPECULAR , vec3(1  , 1  , 1  ), 0           , 0        , 1.2 )),
-	Sphere(vec3(  0    ,  1.5   ,  0    ), 0.4     , Material(SPECULAR , vec3(0.8, 1  , 0.8), 0           , 0        , 1.2 )),
-	Sphere(vec3(  1    ,  0.5   ,  0    ), 0.4     , Material(GLASS    , vec3(1  , 1  , 1  ), 0           , 0        , 1.2 )),
-	Sphere(vec3(  1    ,  1.5   ,  0    ), 0.4     , Material(GLASS    , vec3(0.8, 0.8, 1  ), 0           , 0        , 1.2 )),
-	Sphere(vec3(  0    ,  3.5   ,  0    ), 0.5     , Material(EMISSIVE , vec3(1  , 1  , 1  ), 7.5         , 0        , 1.2 ))
+	Sphere(vec3( -1    ,  0.3   ,  0    ), 0.2     , Material(DIFFUSE  , vec3(1  , 1  , 1  ), 0           , 0        , 1.2 )),
+	Sphere(vec3(  0    ,  0.3   ,  0    ), 0.2     , Material(SPECULAR , vec3(1  , 1  , 1  ), 0           , 0        , 1.2 )),
+	Sphere(vec3(  1    ,  0.3   ,  0    ), 0.2     , Material(GLASS    , vec3(1  , 1  , 1  ), 0           , 0        , 1.2 ))
 );
 const Quad Scene_Quads[QUAD_COUNT] = Quad[QUAD_COUNT](
 	// VERT_A               , VERT_B               , VERT_C               , VERT_D                 ,          Type     , Color              , Emissiveness, Roughness, IOR
-	Quad(vec3( -5 , 0  , -5  ), vec3(  5 , 0  , -5  ), vec3(  5 , 0  ,  5  ), vec3( -5 , 0  ,  5  ), Material(DIFFUSE  , vec3(0.5, 0.5, 0.5), 0           , 0        , 1.0 )), // Floor
-	Quad(vec3(  5 , 0  , -5  ), vec3(  5 , 0  ,  5  ), vec3(  5 , 10 ,  5  ), vec3(  5 , 10 , -5  ), Material(DIFFUSE  , vec3(1  , 0  , 0  ), 0           , 0        , 1.0 )), // Right Wall
-	Quad(vec3( -5 , 0  , -5  ), vec3( -5 , 0  ,  5  ), vec3( -5 , 10 ,  5  ), vec3( -5 , 10 , -5  ), Material(DIFFUSE  , vec3(0  , 1  , 0  ), 0           , 0        , 1.0 )), // Left  Wall
-	Quad(vec3( -5 , 0  , -5  ), vec3(  5 , 0  , -5  ), vec3(  5 , 10 ,  5  ), vec3( -5 , 10 ,  5  ), Material(DIFFUSE  , vec3(1  , 1  , 1  ), 0           , 0        , 1.0 ))  // Ceiling
+	Quad(vec3( -2 , 0  , -15 ), vec3(  2 , 0  , -15 ), vec3(  2 , 0  ,  5  ), vec3( -2 , 0  ,  5  ), Material(DIFFUSE  , vec3(1  , 1  , 1  ), 0           , 0        , 1.0 )), // Floor
+	Quad(vec3(  2 , 0  , -15 ), vec3(  2 , 0  ,  5  ), vec3(  2 , 3  ,  5  ), vec3(  2 , 3  , -15 ), Material(DIFFUSE  , vec3(1  , 0  , 0  ), 0           , 0        , 1.0 )), // Right Wall
+	Quad(vec3( -2 , 0  , -15 ), vec3( -2 , 0  ,  5  ), vec3( -2 , 3  ,  5  ), vec3( -2 , 3  , -15 ), Material(DIFFUSE  , vec3(0  , 1  , 0  ), 0           , 0        , 1.0 )), // Left  Wall
+	Quad(vec3( -2 , 0  , -15 ), vec3(  2 , 0  , -15 ), vec3(  2 , 3  , -15 ), vec3( -2 , 3  , -15 ), Material(DIFFUSE  , vec3(1  , 1  , 1  ), 0           , 0        , 1.0 )), // Back  Wall
+	Quad(vec3( -2 , 3  , -15 ), vec3(  2 , 3  , -15 ), vec3(  2 , 3  ,  5  ), vec3( -2 , 3  ,  5  ), Material(DIFFUSE  , vec3(1  , 1  , 1  ), 0           , 0        , 1.0 )), // Ceiling
+	Quad(vec3( -2 , 2.9, -10 ), vec3( -1 , 2.9, -10 ), vec3( -1 , 2.9,  3  ), vec3( -2 , 2.9,  3  ), Material(EMISSIVE , vec3(1  , 1  , 1  ), 1           , 0        , 1.0 )), // Light Right
+	Quad(vec3(  2 , 2.9, -10 ), vec3(  1 , 2.9, -10 ), vec3(  1 , 2.9,  3  ), vec3(  2 , 2.9,  3  ), Material(EMISSIVE , vec3(1  , 1  , 1  ), 1           , 0        , 1.0 ))  // Light Left
 );
 
 // INTERSECTIONS ---------------------------------------------------------------------------------------
@@ -414,7 +411,7 @@ vec3 f_BidirectionalSampling(const in Hit hit_data, in int object_id, out float 
 		Ray r = Ray(hit_data.Hit_Pos + hit_data.Hit_New_Dir * EPSILON, f_ConeRoughness(dir, theta)); //epsilon to make sure it self intersects
 		inv_prob = (2.0 * (1.0 - cos(theta)));
 		Hit hit = f_SceneIntersection(r);
-		if (hit.Hit_Mat.Emissive_Strength > 0 && hit.Hit_Obj == (object_id - SPHERE_COUNT)) {
+		if (hit.Hit_Mat.Emissive_Strength > 0 && hit.Hit_Obj == object_id) {
 			return quad.Mat.Color * quad.Mat.Emissive_Strength * max(0.0, dot(r.Ray_Direction, hit_data.Hit_New_Dir)) * inv_prob;
 		}
 	}
@@ -426,7 +423,6 @@ vec3 f_BidirectionalSampling(const in Hit hit_data, in int object_id, out float 
 vec3 f_Radiance(in Ray r){
 	vec3 rad = vec3(0);
 	vec3 brdf = vec3(1);
-	bool delta = true;
 
 	for (int b = 0; b < RAY_BOUNCES; b++) {
 		Hit hit_data = f_SceneIntersection(r);
@@ -436,7 +432,6 @@ vec3 f_Radiance(in Ray r){
 		}
 		float prob = 0.;
 		if (hit_data.Hit_Mat.Type == DIFFUSE) {
-			delta = false;
 			vec3 tangent = normalize(cross(r.Ray_Direction, hit_data.Hit_New_Dir));
 			vec3 bitangent = normalize(cross(hit_data.Hit_New_Dir, tangent));
 			vec3 nr = cosine_weighted_hemi_sample();;
@@ -449,12 +444,10 @@ vec3 f_Radiance(in Ray r){
 			}
 		}
 		else if (hit_data.Hit_Mat.Type == SPECULAR) {
-			delta = true;
 			r.Ray_Direction = reflect(r.Ray_Direction, hit_data.Hit_New_Dir);
 			brdf *= hit_data.Hit_Mat.Color;
 		}
 		else if (hit_data.Hit_Mat.Type == GLASS) {
-			delta = true;
 			float cosi = abs(dot(hit_data.Hit_New_Dir, r.Ray_Direction));
 			float sini = sqrt(1. - cosi * cosi);
 			float iort = hit_data.Hit_Mat.IOR;
@@ -477,7 +470,7 @@ vec3 f_Radiance(in Ray r){
 			}
 		}
 		else if (hit_data.Hit_Mat.Type == EMISSIVE) { // EMISSIVE
-			return rad + brdf * (delta ? hit_data.Hit_Mat.Color *  hit_data.Hit_Mat.Emissive_Strength : vec3(0));
+			return rad + brdf * hit_data.Hit_Mat.Color * hit_data.Hit_Mat.Emissive_Strength;
 		}
 		r.Ray_Origin = hit_data.Hit_Pos + r.Ray_Direction * 0.001;
 	}
@@ -503,15 +496,19 @@ Ray f_CameraRay(vec2 uv) {
 void main() {
 	if (iFrame < SAMPLES) {
 		rng_initialize(gl_FragCoord.xy, iFrame);
-		vec2 uv = (gl_FragCoord.xy - 1.0 - iResolution.xy /2.0)/max(iResolution.x, iResolution.y);
+		const vec2 uv = (gl_FragCoord.xy - 1.0 - iResolution.xy /2.0) / max(iResolution.x, iResolution.y);
+		const vec2 pixel_size = 1/ iResolution.xy;
 
 		// -------------------------- Ambient Occlusion
 		if (iRenderMode == 0) {
 			vec3 col;
-			for (int s = 0; s < SPP; s++){
-				col += f_AmbientOcclusion(f_CameraRay(uv));
+			for (int x = 0; x < SPP; x++) {
+				for (int y = 0; y < SPP; y++) {
+					vec2 subpixelUV = uv - (vec2(0.5) * pixel_size) + (vec2(float(x) / float(SPP), float(y) / float(SPP)) * pixel_size);
+					col += f_AmbientOcclusion(f_CameraRay(subpixelUV));
+				}
 			}
-			col /= float(SPP);
+			col /= float(SPP * SPP);
 			// Accumulation
 			float interval = float(iFrame);
 			if (iFrame <= 1 || !iCameraChange) {
@@ -522,10 +519,14 @@ void main() {
 		// -------------------------- PathTracer
 		else if (iRenderMode == 1) {
 			vec3 col;
-			for (int s = 0; s < SPP; s++){
-				col += f_Radiance(f_CameraRay(uv));
+			for (int x = 0; x < SPP; x++) {
+				for (int y = 0; y < SPP; y++) {
+					vec2 subpixelUV = uv - (vec2(0.5) * pixel_size) + (vec2(float(x) / float(SPP), float(y) / float(SPP)) * pixel_size);
+					col += f_Radiance(f_CameraRay(subpixelUV));
+				}
 			}
-			col /= float(SPP);
+
+			col /= float(SPP * SPP);
 			// Accumulation
 			float interval = float(iFrame);
 			if (iFrame <= 1 || !iCameraChange) {
