@@ -14,7 +14,8 @@ C   : Reset Camera Position
 P   : Toggle Pause
 ESC : Exit
 
-Right-Click + Move Look Around
+Right-Click + Move : Look Around
+Scroll-Wheel       : Increase Movement Sensitivity
 ```
 
 ```
