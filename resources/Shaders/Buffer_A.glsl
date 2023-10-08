@@ -4,6 +4,7 @@ uniform float iTime;
 uniform uint  iFrame;
 uniform vec2  iResolution;
 uniform uint  iRenderMode;
+uniform bool  iBidirectional;
 
 uniform float iCameraFocalLength;
 uniform float iCameraSensorWidth;
@@ -30,12 +31,12 @@ out vec4 fragColor;
 #define HDRI_STRENGTH 1.0
 #define AO_LENGTH     1.0
 
-#define MAX_DIST    5000.0
-#define RAY_BOUNCES 6
-#define SPP         1
-#define SAMPLES     64
+#define MAX_DIST      5000.0
+#define RAY_BOUNCES   4
+#define SPP           1
+#define SAMPLES       512
 
-#define EPSILON     0.001
+#define EPSILON       0.001
 
 // CONSTANTS ---------------------------------------------------------------------------------------
 
@@ -410,7 +411,7 @@ vec3 f_BidirectionalSampling(const in Hit hit_data, in int object_id, out float 
 		vec3 dir = normalize(quad.v0 - hit_data.Hit_Pos);
 		float dist = length(quad.v0 - hit_data.Hit_Pos);
 		float theta = asin(1.0 / dist);
-		Ray r = Ray(hit_data.Hit_Pos + hit_data.Hit_New_Dir * EPSILON, dir); //epsilon to make sure it self intersects
+		Ray r = Ray(hit_data.Hit_Pos + hit_data.Hit_New_Dir * EPSILON, f_ConeRoughness(dir, theta)); //epsilon to make sure it self intersects
 		inv_prob = (2.0 * (1.0 - cos(theta)));
 		Hit hit = f_SceneIntersection(r);
 		if (hit.Hit_Mat.Emissive_Strength > 0 && hit.Hit_Obj == (object_id - SPHERE_COUNT)) {
@@ -441,9 +442,10 @@ vec3 f_Radiance(in Ray r){
 			vec3 nr = cosine_weighted_hemi_sample();;
 			r.Ray_Direction = normalize(tangent * nr.x + bitangent * nr.y + hit_data.Hit_New_Dir * nr.z);
 			brdf *= hit_data.Hit_Mat.Color;
-			for (int i = 0; i < SPHERE_COUNT; i++) {
-				vec3 acc = brdf * f_BidirectionalSampling(hit_data, i, prob);
-				rad += acc;
+			if (iBidirectional) {
+				for (int i = 0; i < SPHERE_COUNT; i++) {
+					rad += brdf * f_BidirectionalSampling(hit_data, i, prob);
+				}
 			}
 		}
 		else if (hit_data.Hit_Mat.Type == SPECULAR) {

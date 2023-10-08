@@ -33,9 +33,10 @@ struct GLSL_Renderer {
 	double iTime;
 	size_t iFrame;
 	uvec2  iResolution;
-	
+	bool   iBidirectional;
+	bool   iCameraChange;
+
 	Camera camera;
-	bool   camera_change;
 
 	// Control Input Variables
 	Render_Mode::Enum render_mode;
