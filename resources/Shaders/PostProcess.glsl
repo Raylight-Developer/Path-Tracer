@@ -9,7 +9,7 @@ uniform bool  iBidirectional;
 uniform bool  iCameraChange;
 
 uniform sampler2D iRawFrame;
-//uniform sampler2D iAccumulationFrame;
+uniform sampler2D iAccumulationFrame;
 
 in vec2 fragCoord;
 in vec2 fragTexCoord;
@@ -25,5 +25,5 @@ void main() {
 	// col = vec4(pow(col.x, GAMMA), pow(col.y, GAMMA), pow(col.z, GAMMA), pow(col.w, GAMMA));
 	// fragColor = col * 1.3;
 
-	fragColor = texture(iRawFrame, fragTexCoord);
+	fragColor = texture(iAccumulationFrame, fragTexCoord);
 }

@@ -29,26 +29,32 @@ GLSL_Renderer::GLSL_Renderer() {
 	last_frame_time = 0;
 	frame_time = 0.01;
 
-	main_vao       = VAO();
-	main_vbo       = VBO();
-	main_ebo       = EBO();
-	raw_frame_tex   = FBT();
+	main_vao         = VAO();
+	main_vbo         = VBO();
+	main_ebo         = EBO();
+	raw_frame_tex    = FBT();
 	accumulation_tex = FBT();
-	raw_frame_fbo       = FBO();
-	raw_frame_program    = Shader_Program("Buffer A");
-	postprocess_program    = Shader_Program("Main Image");
+	raw_frame_fbo    = FBO();
+	accumulation_fbo = FBO();
+	raw_frame_program      = Shader_Program("Raw Image");
+	accumulation_program   = Shader_Program("Accumulation Program");
+	postprocess_program    = Shader_Program("Post Process");
 
 	pause = false;
 }
 
 void GLSL_Renderer::recompile() {
 	raw_frame_program.f_compile();
+	accumulation_program.f_compile();
 	postprocess_program.f_compile();
 
 	raw_frame_fbo.f_bind();
 	raw_frame_tex.f_resize(iResolution);
 	raw_frame_fbo.f_unbind();
+
+	accumulation_fbo.f_bind();
 	accumulation_tex.f_resize(iResolution);
+	accumulation_fbo.f_unbind();
 
 	//camera = Camera();
 	iCameraChange = true;
@@ -67,7 +73,10 @@ void GLSL_Renderer::framebuffer_size_callback(GLFWwindow* window, int width, int
 	instance->raw_frame_fbo.f_bind();
 	instance->raw_frame_tex.f_resize(uvec2(width, height));
 	instance->raw_frame_fbo.f_unbind();
+
+	instance->accumulation_fbo.f_bind();
 	instance->accumulation_tex.f_resize(uvec2(width, height));
+	instance->accumulation_fbo.f_unbind();
 }
 
 void GLSL_Renderer::cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
@@ -266,66 +275,65 @@ void GLSL_Renderer::f_init() {
 			GLfloat Time = GLfloat(glfwGetTime() - iTime);
 			//frame_time = glfwGetTime() - last_frame_time;
 
+			main_vao.f_bind();
 
 			raw_frame_fbo.f_bind();
 			glClear(GL_COLOR_BUFFER_BIT);
 			raw_frame_program.f_activate();
-			main_vao.f_bind();
 
-			glUniform1f (glGetUniformLocation(raw_frame_program.ID, "iTime"),       Time);
-			glUniform1ui(glGetUniformLocation(raw_frame_program.ID, "iFrame"),      GLuint(iFrame));
-			glUniform2fv(glGetUniformLocation(raw_frame_program.ID, "iResolution"), 1, value_ptr(vec2(iResolution)));
-			glUniform1ui(glGetUniformLocation(raw_frame_program.ID, "iRenderMode"), static_cast<GLuint>(render_mode));
+			glUniform1f (glGetUniformLocation(raw_frame_program.ID, "iTime"),          Time);
+			glUniform1ui(glGetUniformLocation(raw_frame_program.ID, "iFrame"),         GLuint(iFrame));
+			glUniform2fv(glGetUniformLocation(raw_frame_program.ID, "iResolution"),    1, value_ptr(vec2(iResolution)));
+			glUniform1ui(glGetUniformLocation(raw_frame_program.ID, "iRenderMode"),    static_cast<GLuint>(render_mode));
 			glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iBidirectional"), iBidirectional);
 
 			glUniform1f (glGetUniformLocation(raw_frame_program.ID, "iCameraFocalLength"), GLfloat(camera.focal_length));
 			glUniform1f (glGetUniformLocation(raw_frame_program.ID, "iCameraSensorWidth"), GLfloat(camera.sensor_width));
-			glUniform3fv(glGetUniformLocation(raw_frame_program.ID, "iCameraPos"),   1, value_ptr(vec3(camera.position)));
-			glUniform3fv(glGetUniformLocation(raw_frame_program.ID, "iCameraFront"), 1, value_ptr(vec3(camera.z_vector)));
-			glUniform3fv(glGetUniformLocation(raw_frame_program.ID, "iCameraUp"),    1, value_ptr(vec3(camera.y_vector)));
-			glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iCameraChange"), iCameraChange);
-			background_tex.f_bind(GL_TEXTURE1);
-			glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iHdri"), 1);
-			
+			glUniform3fv(glGetUniformLocation(raw_frame_program.ID, "iCameraPos"),   1,    value_ptr(vec3(camera.position)));
+			glUniform3fv(glGetUniformLocation(raw_frame_program.ID, "iCameraFront"), 1,    value_ptr(vec3(camera.z_vector)));
+			glUniform3fv(glGetUniformLocation(raw_frame_program.ID, "iCameraUp"),    1,    value_ptr(vec3(camera.y_vector)));
+			glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iCameraChange"),      iCameraChange);
+			background_tex.f_bind(GL_TEXTURE2);
+			glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iHdri"), 2);
+
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 			raw_frame_fbo.f_unbind();
 
-			// Activate Postprocessing Shader
+			// Activate Accumulation Shader
 
-			/*postprocess_program.f_activate();
+			accumulation_fbo.f_bind();
+			accumulation_program.f_activate();
 
-			glUniform1f (glGetUniformLocation(postprocess_program.ID, "iTime"),       Time);
-			glUniform1ui(glGetUniformLocation(postprocess_program.ID, "iFrame"),      GLuint(iFrame));
-			glUniform2fv(glGetUniformLocation(postprocess_program.ID, "iResolution"), 1, value_ptr(vec2(iResolution)));
-			glUniform1ui(glGetUniformLocation(postprocess_program.ID, "iRenderMode"), static_cast<GLuint>(render_mode));
-			glUniform1i (glGetUniformLocation(postprocess_program.ID, "iBidirectional"), iBidirectional);
-			glUniform1i (glGetUniformLocation(postprocess_program.ID, "iCameraChange"), iCameraChange);
+			glUniform1f (glGetUniformLocation(accumulation_program.ID, "iTime"),         Time);
+			glUniform1ui(glGetUniformLocation(accumulation_program.ID, "iFrame"),        GLuint(iFrame));
+			glUniform1ui(glGetUniformLocation(accumulation_program.ID, "iRenderMode"),   static_cast<GLuint>(render_mode));
+			glUniform1i (glGetUniformLocation(accumulation_program.ID, "iCameraChange"), iCameraChange);
 			raw_frame_tex.f_bind(GL_TEXTURE0);
-			glUniform1i (glGetUniformLocation(postprocess_program.ID, "iRawFrame"), 0);*/
-			//accumulation_tex.f_bind(GL_TEXTURE0);
-			//glUniform1i (glGetUniformLocation(postprocess_program.ID, "iLastFrame"), 0);
+			glUniform1i (glGetUniformLocation(accumulation_program.ID, "iRawFrame"), 0);
+			accumulation_tex.f_bind(GL_TEXTURE1);
+			glUniform1i (glGetUniformLocation(accumulation_program.ID, "iLastFrame"), 1);
 
-			//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-			//glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, iResolution.x, iResolution.y);
-			//accumulation_tex.f_unbind();
-
+			raw_frame_tex.f_unbind();
+			accumulation_tex.f_unbind();
+			accumulation_fbo.f_unbind();
 
 			// Activate Postprocessing Shader
 
 			postprocess_program.f_activate();
 
-			glUniform1f(glGetUniformLocation(postprocess_program.ID, "iTime"), Time);
-			glUniform1ui(glGetUniformLocation(postprocess_program.ID, "iFrame"), GLuint(iFrame));
+			glUniform1f (glGetUniformLocation(postprocess_program.ID, "iTime"),          Time);
+			glUniform1ui(glGetUniformLocation(postprocess_program.ID, "iFrame"),         GLuint(iFrame));
 			glUniform2fv(glGetUniformLocation(postprocess_program.ID, "iResolution"), 1, value_ptr(vec2(iResolution)));
-			glUniform1ui(glGetUniformLocation(postprocess_program.ID, "iRenderMode"), static_cast<GLuint>(render_mode));
-			glUniform1i(glGetUniformLocation(postprocess_program.ID, "iBidirectional"), iBidirectional);
-			glUniform1i(glGetUniformLocation(postprocess_program.ID, "iCameraChange"), iCameraChange);
+			glUniform1ui(glGetUniformLocation(postprocess_program.ID, "iRenderMode"),    static_cast<GLuint>(render_mode));
+			glUniform1i (glGetUniformLocation(postprocess_program.ID, "iBidirectional"), iBidirectional);
+			glUniform1i (glGetUniformLocation(postprocess_program.ID, "iCameraChange"),  iCameraChange);
 			raw_frame_tex.f_bind(GL_TEXTURE0);
-			glUniform1i(glGetUniformLocation(postprocess_program.ID, "iRawFrame"), 0);
-			//accumulation_tex.f_bind(GL_TEXTURE0);
-			//glUniform1i(glGetUniformLocation(postprocess_program.ID, "iLastFrame"), 0);
+			glUniform1i (glGetUniformLocation(postprocess_program.ID, "iRawFrame"), 0);
+			accumulation_tex.f_bind(GL_TEXTURE1);
+			glUniform1i (glGetUniformLocation(postprocess_program.ID, "iAccumulationFrame"), 1);
 
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
