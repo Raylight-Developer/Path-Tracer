@@ -51,11 +51,13 @@ struct GLSL_Renderer {
 	VAO main_vao;
 	VBO main_vbo;
 	EBO main_ebo;
-	FBT buffer_tex_a;
-	FBT last_frame_tex;
-	FBO main_fbo;
-	Shader_Program main_buffer;
-	Shader_Program post_buffer;
+	FBT raw_frame_tex;
+	FBT accumulation_tex;
+	FBO raw_frame_fbo;
+	FBO accumulation_fbo;
+	Shader_Program raw_frame_program;
+	Shader_Program accumulation_program;
+	Shader_Program postprocess_program;
 
 	bool pause;
 
