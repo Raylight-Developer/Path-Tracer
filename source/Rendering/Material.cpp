@@ -17,13 +17,13 @@ Material::Material() {
 	Fuzz_Angle            = 10;
 	Alpha                 = 1;
 
-	Diffuse_Color         = dvec3( 1  , 1  , 1   );
-	Reflective_Color      = dvec3( 1  , 1  , 1   );
-	Refractive_Color      = dvec3( 1  , 1  , 1   );
-	Subsurface_Color      = dvec3( 1  , 0.5, 0.5 );
-	Emissive_Color        = dvec3( 1  , 1  , 1   );
-	Iridescent_Color_A    = dvec3( 1  , 0  , 0   );
-	Iridescent_Color_B    = dvec3( 0  , 0  , 1   );
-	Clearcoat_Color       = dvec3( 1  , 1  , 1   );
-	Fuzz_Color            = dvec3( 0  , 1  , 0   );
+	Diffuse_Color         = dvec3( 1  , 1  , 1  );
+	Reflective_Color      = dvec3( 1  , 1  , 1  );
+	Refractive_Color      = dvec3( 1  , 1  , 1  );
+	Subsurface_Color      = dvec3( 1  , 0  , 0  );
+	Emissive_Color        = dvec3( 1  , 1  , 1  );
+	Iridescent_Color_A    = dvec3( 1  , 0  , 0  );
+	Iridescent_Color_B    = dvec3( 0  , 0  , 1  );
+	Clearcoat_Color       = dvec3( 1  , 1  , 1  );
+	Fuzz_Color            = dvec3( 0  , 1  , 0  );
 }

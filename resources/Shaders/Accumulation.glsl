@@ -14,9 +14,9 @@ in vec2 fragTexCoord;
 out vec4 fragColor;
 
 void main() {
-	float weight = 1.0 / float(iFrame);
+	float weight = float(iFrame);
 	if (iFrame <= 1 || !iCameraChange) {
-		fragColor = vec4((texture(iLastFrame, fragTexCoord).rgb * (1 - weight) + texture(iRawFrame, fragTexCoord).rgb)* weight, 1.0);
+		fragColor = vec4((texture(iLastFrame, fragTexCoord).xyz * weight + texture(iRawFrame, fragTexCoord).xyz) / (weight + 1.0), 1);
 	}
 	else {
 		fragColor = texture(iRawFrame, fragTexCoord);
