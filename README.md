@@ -1,5 +1,5 @@
 # Path Tracer
-![Uploading image.png…]()
+![image](https://github.com/AleMar21430/Path-Tracer/assets/99276653/67468e74-c9aa-4a32-82e5-55e1d0cda523)
 
 ```
 Controls:
