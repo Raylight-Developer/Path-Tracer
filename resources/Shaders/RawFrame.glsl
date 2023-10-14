@@ -235,36 +235,8 @@ const Quad Scene_Quads[QUAD_COUNT] = Quad[QUAD_COUNT](
 
 const Torus Scene_Tori[TORUS_COUNT] = Torus[TORUS_COUNT](
 	  // Position           , Rotation, Inner Radius, Torus Radius,          Type     , Color              , Emissiveness, Roughness, IOR
-	Torus(vec3( 0, 1 , -1 ) , vec3(0) , 0.5         , 0.25        , Material(GLASS    , vec3(1  , 1  , 1  ), 0           , 0        , 1.2 ))
+	Torus(vec3( 0, 1 , -1 ) , vec3(0) , 0.5         , 0.25        , Material(GLASS    , vec3(1  , 1  , 1  ), 0           , 0        , 1.1 ))
 );
-
-// SIGNED DISTANCE FIELD FUNCTIONS ---------------------------------------------------------------------------------------
-float sdTorus(vec3 p, float ra, float rb) {
-	return length(vec2(length(p.xz)-ra,p.y))-rb;
-}
-float glassCurve(float x) {
-	return .3*smoothstep(.95,1.,x)+.35*smoothstep(.56,.4,x)*smoothstep(-1.3,.4,x);
-}
-float sdGlass(vec3 p) {
-	p.y -= 1.;
-	float h = clamp(-p.y*0.6779661017, 0., 1.);
-	return sdTorus(p + vec3(0,1.475,0)*h, glassCurve(h), .02);
-}
-vec2 opU(vec2 a, vec2 b) {return a.x<b.x ? a : b;}
-vec2 map(vec3 p) {
-	vec2 d = vec2(1e10);
-	d = opU(d, vec2(sdGlass(p*0.5-vec3(1.4,0,.2))*.5));
-	return d;
-}
-vec3 calcNormal(vec3 p) {
-	float h = map(p).x;
-	const vec2 e = vec2(EPSILON, 0);
-	return normalize(
-		h - vec3(map(p-e.xyy).x,
-		map(p-e.yxy).x,
-		map(p-e.yyx).x)
-	);
-}
 
 // INTERSECTIONS ---------------------------------------------------------------------------------------
 
@@ -345,48 +317,85 @@ bool f_QuadIntersection(in Ray ray, in Quad quad, inout float ray_length) {
 
 bool f_TorusIntersection(in Ray ray, in Torus torus, inout float ray_length) {
 	ray.Ray_Origin = ray.Ray_Origin - torus.Position;
-	vec3 o = ray.Ray_Origin - torus.Position;
-	vec3 d = ray.Ray_Direction;
+	float po = 1.0;
 	
-	float a = dot(d.xz, d.xz);
-	float b = 2.0 * dot(o.xz, d.xz);
-	float c = dot(o.xz, o.xz) + torus.Inner_Radius * torus.Inner_Radius - torus.Torus_Radius * torus.Torus_Radius;
+	float Ra2 = torus.Inner_Radius*torus.Inner_Radius;
+	float ra2 = torus.Torus_Radius*torus.Torus_Radius;
 	
-	float discriminant = b * b - 4.0 * a * c;
-	
-	if (discriminant < 0.0) {
-		return false;
-	}
-	
-	float sqrtDiscriminant = sqrt(discriminant);
-	
-	float t1 = (-b - sqrtDiscriminant) / (2.0 * a);
-	float t2 = (-b + sqrtDiscriminant) / (2.0 * a);
-	
-	float t = min(t1, t2);
-	
-	if (t < 0.0) {
-		return false;
-	}
+	float m = dot(ray.Ray_Origin,ray.Ray_Origin);
+	float n = dot(ray.Ray_Origin,ray.Ray_Direction);
 
-	ray_length = t;
-	return true;
-}
 
-bool f_SDFIntersection(in Ray ray, inout float ray_length) {
-	float t = 0.;
-	float s = sign(map(ray.Ray_Origin).x);
-	vec2 h;
-	float ttmax = 1e10;
+	float k = (m - ra2 - Ra2)/2.0;
+	float k3 = n;
+	float k2 = n*n + Ra2*ray.Ray_Direction.z*ray.Ray_Direction.z + k;
+	float k1 = k*n + Ra2*ray.Ray_Origin.z*ray.Ray_Direction.z;
+	float k0 = k*k + Ra2*ray.Ray_Origin.z*ray.Ray_Origin.z - Ra2*ra2;
 
-	for (int i=0; i<256 && t<1e10; i++) {
-		vec3 p = ray.Ray_Origin + ray.Ray_Direction*t;
-		h = map(p); h.x *= s;
-		if (abs(h.x) < EPSILON) return false;
-		t += h.x;
+	if( abs(k3*(k3*k3 - k2) + k1) < 0.01 ) {
+		po = -1.0;
+		float tmp=k1; k1=k3; k3=tmp;
+		k0 = 1.0/k0;
+		k1 = k1*k0;
+		k2 = k2*k0;
+		k3 = k3*k0;
 	}
 
-	ray_length = ttmax;
+	float c2 = 2.0*k2 - 3.0*k3*k3;
+	float c1 = k3*(k3*k3 - k2) + k1;
+	float c0 = k3*(k3*(-3.0*k3*k3 + 4.0*k2) - 8.0*k1) + 4.0*k0;
+
+	c2 /= 3.0;
+	c1 *= 2.0;
+	c0 /= 3.0;
+
+	float Q = c2*c2 + c0;
+	float R = 3.0*c0*c2 - c2*c2*c2 - c1*c1;
+
+	float h = R*R - Q*Q*Q;
+	float z = 0.0;
+	if( h < 0.0 ) {
+		float sQ = sqrt(Q);
+		z = 2.0*sQ*cos( acos(R/(sQ*Q)) / 3.0 );
+	}
+	else {
+		float sQ = pow( sqrt(h) + abs(R), 1.0/3.0 );
+		z = sign(R)*abs( sQ + Q/sQ );
+	}
+	z = c2 - z;
+
+	float d1 = z   - 3.0*c2;
+	float d2 = z*z - 3.0*c0;
+	if( abs(d1) < 1.0e-4 ) {
+		if( d2 < 0.0 ) return false;
+		d2 = sqrt(d2);
+	}
+	else {
+		if( d1 < 0.0 ) return false;
+		d1 = sqrt( d1/2.0 );
+		d2 = c1/d1;
+	}
+
+	float result = 1e20;
+	h = d1*d1 - z + d2;
+	if( h > 0.0 ) {
+		h = sqrt(h);
+		float t1 = -d1 - h - k3; t1 = (po<0.0)?2.0/t1:t1;
+		float t2 = -d1 + h - k3; t2 = (po<0.0)?2.0/t2:t2;
+		if( t1 > 0.0 ) result=t1; 
+		if( t2 > 0.0 ) result=min(result,t2);
+	}
+
+	h = d1*d1 - z - d2;
+	if( h > 0.0 ) {
+		h = sqrt(h);
+		float t1 = d1 - h - k3;  t1 = (po<0.0)?2.0/t1:t1;
+		float t2 = d1 + h - k3;  t2 = (po<0.0)?2.0/t2:t2;
+		if( t1 > 0.0 ) result=min(result,t1);
+		if( t2 > 0.0 ) result=min(result,t2);
+	}
+
+	ray_length = result;
 	return true;
 }
 
@@ -414,8 +423,7 @@ vec3 f_ConeRoughness(vec3 dir, float theta) {
 	return normalize(
 		left * cos(phi) * sin_theta +
 		up   * sin(phi) * sin_theta +
-		dir  * cos_theta
-	);
+		dir  * cos_theta);
 }
 
 Hit f_SceneIntersection(const in Ray ray) {
@@ -426,7 +434,7 @@ Hit f_SceneIntersection(const in Ray ray) {
 	for (int i = 0; i < SPHERE_COUNT; i++) {
 		float resultRayLength;
 		if (f_SphereIntersection(ray, Scene_Spheres[i], resultRayLength)) {
-			if(resultRayLength < hit_data.Ray_Length && resultRayLength > EPSILON) {
+			if(resultRayLength < hit_data.Ray_Length && resultRayLength > 0.001) {
 				Sphere sphere = Scene_Spheres[i];
 				hit_data.Ray_Length = resultRayLength;
 				hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * resultRayLength;
@@ -443,7 +451,7 @@ Hit f_SceneIntersection(const in Ray ray) {
 	for (int i = 0; i < QUAD_COUNT; i++) {
 		float resultRayLength;
 		if (f_QuadIntersection(ray, Scene_Quads[i], resultRayLength)) {
-			if(resultRayLength < hit_data.Ray_Length && resultRayLength > EPSILON) {
+			if(resultRayLength < hit_data.Ray_Length && resultRayLength > 0.001) {
 				Quad quad = Scene_Quads[i];
 				hit_data.Ray_Length = resultRayLength;
 				hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * resultRayLength;
@@ -457,23 +465,22 @@ Hit f_SceneIntersection(const in Ray ray) {
 	for (int i = 0; i < TORUS_COUNT; i++) {
 		float resultRayLength;
 		if (f_TorusIntersection(ray, Scene_Tori[i], resultRayLength)) {
-			if(resultRayLength < hit_data.Ray_Length && resultRayLength > EPSILON) {
+			if(resultRayLength < hit_data.Ray_Length && resultRayLength > 0.001) {
 				Torus torus = Scene_Tori[i];
 				hit_data.Ray_Length = resultRayLength;
 				hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * resultRayLength;
 
 				vec2 q = vec2(length(hit_data.Hit_Pos.xz), hit_data.Hit_Pos.y);
-				hit_data.Hit_New_Dir = normalize( hit_data.Hit_Pos*(dot(hit_data.Hit_Pos,hit_data.Hit_Pos)- torus.Torus_Radius*torus.Torus_Radius - torus.Inner_Radius*torus.Inner_Radius*vec3(1.0,1.0,-1.0)));
+				hit_data.Hit_New_Dir = normalize(vec3(hit_data.Hit_Pos.x - 2.0 * torus.Torus_Radius * q.x, 2.0 * torus.Torus_Radius * q.y, hit_data.Hit_Pos.z));
 				hit_data.Hit_Mat = torus.Mat;
 				hit_data.Hit_Obj = i + SPHERE_COUNT + QUAD_COUNT;
-				//if (distance(ray.Ray_Origin, torus.Position) <=torus.Inner_Radius) {
-				//	hit_data.Ray_Inside = true;
-				//	//hit_data.Hit_New_Dir *= -1.0;
-				//}
+				if (distance(ray.Ray_Origin, torus.Position) <=torus.Inner_Radius) {
+					hit_data.Ray_Inside = true;
+					//hit_data.Hit_New_Dir *= -1.0;
+				}
 			}
 		}
 	}
-
 	return hit_data;
 }
 
