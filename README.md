@@ -1,5 +1,5 @@
 # Path Tracer
-![image](https://github.com/AleMar21430/Path-Tracer/assets/99276653/8a6d576d-2219-4683-b060-1cc3bffa0b5d)
+![image](https://github.com/AleMar21430/Path-Tracer/assets/99276653/0fb0cbfc-c7d5-4957-8546-787960647456)
 
 ```
 Visual Studio Community 2022   17.7.2
