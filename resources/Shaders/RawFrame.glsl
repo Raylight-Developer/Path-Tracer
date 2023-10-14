@@ -179,8 +179,8 @@ struct Hit {
 	Material Hit_Mat;
 };
 struct Sphere {
-	vec3     Position;
-	float    Diameter;
+	vec3 Position;
+	float Diameter;
 	Material Mat;
 };
 struct Cube {
@@ -197,15 +197,24 @@ struct Quad {
 	Material Mat;
 };
 struct Tri {
-	vec3     v0;
-	vec3     v1;
-	vec3     v2;
+	vec3 v0;
+	vec3 v1;
+	vec3 v2;
+	Material Mat;
+};
+
+struct Torus {
+	vec3 Position;
+	vec3 Rotation;
+	float Inner_Radius;
+	float Torus_Radius;
 	Material Mat;
 };
 
 // SCENE ---------------------------------------------------------------------------------------
 #define SPHERE_COUNT 3
 #define QUAD_COUNT   7
+#define TORUS_COUNT  1
 
 const Sphere Scene_Spheres[SPHERE_COUNT] = Sphere[SPHERE_COUNT](
 		// POSITION                      , RADIUS  ,          Type     , Color              , Emissiveness, Roughness, IOR
@@ -214,7 +223,7 @@ const Sphere Scene_Spheres[SPHERE_COUNT] = Sphere[SPHERE_COUNT](
 	Sphere(vec3(  1    ,  0.3   ,  0    ), 0.2     , Material(GLASS    , vec3(1  , 1  , 1  ), 0           , 0        , 1.2 ))
 );
 const Quad Scene_Quads[QUAD_COUNT] = Quad[QUAD_COUNT](
-	// VERT_A               , VERT_B               , VERT_C               , VERT_D                 ,          Type     , Color              , Emissiveness, Roughness, IOR
+	  // VERT_A               , VERT_B               , VERT_C               , VERT_D                 ,          Type     , Color              , Emissiveness, Roughness, IOR
 	Quad(vec3( -2 , 0  , -15 ), vec3(  2 , 0  , -15 ), vec3(  2 , 0  ,  5  ), vec3( -2 , 0  ,  5  ), Material(DIFFUSE  , vec3(1  , 1  , 1  ), 0           , 0        , 1.0 )), // Floor
 	Quad(vec3(  2 , 0  , -15 ), vec3(  2 , 0  ,  5  ), vec3(  2 , 3  ,  5  ), vec3(  2 , 3  , -15 ), Material(DIFFUSE  , vec3(1  , 0  , 0  ), 0           , 0        , 1.0 )), // Right Wall
 	Quad(vec3( -2 , 0  , -15 ), vec3( -2 , 0  ,  5  ), vec3( -2 , 3  ,  5  ), vec3( -2 , 3  , -15 ), Material(DIFFUSE  , vec3(0  , 1  , 0  ), 0           , 0        , 1.0 )), // Left  Wall
@@ -223,6 +232,39 @@ const Quad Scene_Quads[QUAD_COUNT] = Quad[QUAD_COUNT](
 	Quad(vec3( -2 , 2.9, -10 ), vec3( -1 , 2.9, -10 ), vec3( -1 , 2.9,  3  ), vec3( -2 , 2.9,  3  ), Material(EMISSIVE , vec3(1  , 1  , 1  ), 1           , 0        , 1.0 )), // Light Right
 	Quad(vec3(  2 , 2.9, -10 ), vec3(  1 , 2.9, -10 ), vec3(  1 , 2.9,  3  ), vec3(  2 , 2.9,  3  ), Material(EMISSIVE , vec3(1  , 1  , 1  ), 1           , 0        , 1.0 ))  // Light Left
 );
+
+const Torus Scene_Tori[TORUS_COUNT] = Torus[TORUS_COUNT](
+	  // Position           , Rotation, Inner Radius, Torus Radius,          Type     , Color              , Emissiveness, Roughness, IOR
+	Torus(vec3( 0, 1 , -1 ) , vec3(0) , 0.5         , 0.25        , Material(GLASS    , vec3(1  , 1  , 1  ), 0           , 0        , 1.2 ))
+);
+
+// SIGNED DISTANCE FIELD FUNCTIONS ---------------------------------------------------------------------------------------
+float sdTorus(vec3 p, float ra, float rb) {
+	return length(vec2(length(p.xz)-ra,p.y))-rb;
+}
+float glassCurve(float x) {
+	return .3*smoothstep(.95,1.,x)+.35*smoothstep(.56,.4,x)*smoothstep(-1.3,.4,x);
+}
+float sdGlass(vec3 p) {
+	p.y -= 1.;
+	float h = clamp(-p.y*0.6779661017, 0., 1.);
+	return sdTorus(p + vec3(0,1.475,0)*h, glassCurve(h), .02);
+}
+vec2 opU(vec2 a, vec2 b) {return a.x<b.x ? a : b;}
+vec2 map(vec3 p) {
+	vec2 d = vec2(1e10);
+	d = opU(d, vec2(sdGlass(p*0.5-vec3(1.4,0,.2))*.5));
+	return d;
+}
+vec3 calcNormal(vec3 p) {
+	float h = map(p).x;
+	const vec2 e = vec2(EPSILON, 0);
+	return normalize(
+		h - vec3(map(p-e.xyy).x,
+		map(p-e.yxy).x,
+		map(p-e.yyx).x)
+	);
+}
 
 // INTERSECTIONS ---------------------------------------------------------------------------------------
 
@@ -301,6 +343,53 @@ bool f_QuadIntersection(in Ray ray, in Quad quad, inout float ray_length) {
 	return false;
 }
 
+bool f_TorusIntersection(in Ray ray, in Torus torus, inout float ray_length) {
+	ray.Ray_Origin = ray.Ray_Origin - torus.Position;
+	vec3 o = ray.Ray_Origin - torus.Position;
+	vec3 d = ray.Ray_Direction;
+	
+	float a = dot(d.xz, d.xz);
+	float b = 2.0 * dot(o.xz, d.xz);
+	float c = dot(o.xz, o.xz) + torus.Inner_Radius * torus.Inner_Radius - torus.Torus_Radius * torus.Torus_Radius;
+	
+	float discriminant = b * b - 4.0 * a * c;
+	
+	if (discriminant < 0.0) {
+		return false;
+	}
+	
+	float sqrtDiscriminant = sqrt(discriminant);
+	
+	float t1 = (-b - sqrtDiscriminant) / (2.0 * a);
+	float t2 = (-b + sqrtDiscriminant) / (2.0 * a);
+	
+	float t = min(t1, t2);
+	
+	if (t < 0.0) {
+		return false;
+	}
+
+	ray_length = t;
+	return true;
+}
+
+bool f_SDFIntersection(in Ray ray, inout float ray_length) {
+	float t = 0.;
+	float s = sign(map(ray.Ray_Origin).x);
+	vec2 h;
+	float ttmax = 1e10;
+
+	for (int i=0; i<256 && t<1e10; i++) {
+		vec3 p = ray.Ray_Origin + ray.Ray_Direction*t;
+		h = map(p); h.x *= s;
+		if (abs(h.x) < EPSILON) return false;
+		t += h.x;
+	}
+
+	ray_length = ttmax;
+	return true;
+}
+
 // FUNCTIONS ---------------------------------------------------------------------------------------
 
 float DispersionLaw(float wv_a, float wv_b, float wv, float strength) {
@@ -331,18 +420,22 @@ vec3 f_ConeRoughness(vec3 dir, float theta) {
 Hit f_SceneIntersection(const in Ray ray) {
 	Hit hit_data;
 	hit_data.Ray_Length = MAX_DIST;
+	hit_data.Ray_Inside = false;
 
 	for (int i = 0; i < SPHERE_COUNT; i++) {
 		float resultRayLength;
 		if (f_SphereIntersection(ray, Scene_Spheres[i], resultRayLength)) {
 			if(resultRayLength < hit_data.Ray_Length && resultRayLength > 0.001) {
+				Sphere sphere = Scene_Spheres[i];
 				hit_data.Ray_Length = resultRayLength;
 				hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * resultRayLength;
-				hit_data.Hit_New_Dir = normalize(hit_data.Hit_Pos - Scene_Spheres[i].Position);
-				hit_data.Hit_Mat = Scene_Spheres[i].Mat;
+				hit_data.Hit_New_Dir = normalize(hit_data.Hit_Pos - sphere.Position);
+				hit_data.Hit_Mat = sphere.Mat;
 				hit_data.Hit_Obj = i;
-				hit_data.Ray_Inside = distance(ray.Ray_Origin, Scene_Spheres[i].Position) <= Scene_Spheres[i].Diameter;
-				if (hit_data.Ray_Inside) hit_data.Hit_New_Dir *= -1.0;
+				if (distance(ray.Ray_Origin, sphere.Position) <=sphere.Diameter) {
+					hit_data.Ray_Inside = true;
+					hit_data.Hit_New_Dir *= -1.0;
+				}
 			}
 		}
 	}
@@ -350,15 +443,36 @@ Hit f_SceneIntersection(const in Ray ray) {
 		float resultRayLength;
 		if (f_QuadIntersection(ray, Scene_Quads[i], resultRayLength)) {
 			if(resultRayLength < hit_data.Ray_Length && resultRayLength > 0.001) {
+				Quad quad = Scene_Quads[i];
 				hit_data.Ray_Length = resultRayLength;
 				hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * resultRayLength;
-				vec3 nor = normalize(cross(Scene_Quads[i].v2 - Scene_Quads[i].v1, Scene_Quads[i].v3 - Scene_Quads[i].v1));
+				vec3 nor = normalize(cross(quad.v2 - quad.v1, quad.v3 - quad.v1));
 				hit_data.Hit_New_Dir = faceforward( nor, ray.Ray_Direction, nor );
-				hit_data.Hit_Mat = Scene_Quads[i].Mat;
+				hit_data.Hit_Mat = quad.Mat;
 				hit_data.Hit_Obj = i + SPHERE_COUNT;
 			}
 		}
 	}
+	for (int i = 0; i < TORUS_COUNT; i++) {
+		float resultRayLength;
+		if (f_TorusIntersection(ray, Scene_Tori[i], resultRayLength)) {
+			if(resultRayLength < hit_data.Ray_Length && resultRayLength > 0.001) {
+				Torus torus = Scene_Tori[i];
+				hit_data.Ray_Length = resultRayLength;
+				hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * resultRayLength;
+
+				vec2 q = vec2(length(hit_data.Hit_Pos.xz), hit_data.Hit_Pos.y);
+				hit_data.Hit_New_Dir = normalize(vec3(hit_data.Hit_Pos.x - 2.0 * torus.Torus_Radius * q.x, 2.0 * torus.Torus_Radius * q.y, hit_data.Hit_Pos.z));
+				hit_data.Hit_Mat = torus.Mat;
+				hit_data.Hit_Obj = i + SPHERE_COUNT + QUAD_COUNT;
+				if (distance(ray.Ray_Origin, torus.Position) <=torus.Inner_Radius) {
+					hit_data.Ray_Inside = true;
+					//hit_data.Hit_New_Dir *= -1.0;
+				}
+			}
+		}
+	}
+
 	return hit_data;
 }
 
@@ -407,11 +521,23 @@ vec3 f_BidirectionalSampling(const in Hit hit_data, in int object_id, out float 
 		vec3 dir = normalize(quad.v0 - hit_data.Hit_Pos);
 		float dist = length(quad.v0 - hit_data.Hit_Pos);
 		float theta = asin(1.0 / dist);
-		Ray r = Ray(hit_data.Hit_Pos + hit_data.Hit_New_Dir * EPSILON, f_ConeRoughness(dir, theta)); //epsilon to make sure it self intersects
+		Ray r = Ray(hit_data.Hit_Pos + hit_data.Hit_New_Dir * EPSILON, f_ConeRoughness(dir, theta));
 		inv_prob = (2.0 * (1.0 - cos(theta)));
 		Hit hit = f_SceneIntersection(r);
 		if (hit.Hit_Mat.Emissive_Strength > 0 && hit.Hit_Obj == object_id) {
 			return quad.Mat.Color * quad.Mat.Emissive_Strength * max(0.0, dot(r.Ray_Direction, hit_data.Hit_New_Dir)) * inv_prob;
+		}
+	}
+	else if (object_id < SPHERE_COUNT + QUAD_COUNT + TORUS_COUNT) {
+		Torus torus = Scene_Tori[object_id - SPHERE_COUNT - QUAD_COUNT];
+		vec3 dir = normalize(torus.Position - hit_data.Hit_Pos);
+		float dist = length(torus.Position - hit_data.Hit_Pos);
+		float theta = asin(1.0 / dist);
+		Ray r = Ray(hit_data.Hit_Pos + hit_data.Hit_New_Dir * EPSILON, f_ConeRoughness(dir, theta));
+		inv_prob = (2.0 * (1.0 - cos(theta)));
+		Hit hit = f_SceneIntersection(r);
+		if (hit.Hit_Mat.Emissive_Strength > 0 && hit.Hit_Obj == object_id) {
+			return torus.Mat.Color * torus.Mat.Emissive_Strength * max(0.0, dot(r.Ray_Direction, hit_data.Hit_New_Dir)) * inv_prob;
 		}
 	}
 	else {
