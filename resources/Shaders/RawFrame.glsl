@@ -414,7 +414,8 @@ vec3 f_ConeRoughness(vec3 dir, float theta) {
 	return normalize(
 		left * cos(phi) * sin_theta +
 		up   * sin(phi) * sin_theta +
-		dir  * cos_theta);
+		dir  * cos_theta
+	);
 }
 
 Hit f_SceneIntersection(const in Ray ray) {
@@ -425,7 +426,7 @@ Hit f_SceneIntersection(const in Ray ray) {
 	for (int i = 0; i < SPHERE_COUNT; i++) {
 		float resultRayLength;
 		if (f_SphereIntersection(ray, Scene_Spheres[i], resultRayLength)) {
-			if(resultRayLength < hit_data.Ray_Length && resultRayLength > 0.001) {
+			if(resultRayLength < hit_data.Ray_Length && resultRayLength > EPSILON) {
 				Sphere sphere = Scene_Spheres[i];
 				hit_data.Ray_Length = resultRayLength;
 				hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * resultRayLength;
@@ -442,7 +443,7 @@ Hit f_SceneIntersection(const in Ray ray) {
 	for (int i = 0; i < QUAD_COUNT; i++) {
 		float resultRayLength;
 		if (f_QuadIntersection(ray, Scene_Quads[i], resultRayLength)) {
-			if(resultRayLength < hit_data.Ray_Length && resultRayLength > 0.001) {
+			if(resultRayLength < hit_data.Ray_Length && resultRayLength > EPSILON) {
 				Quad quad = Scene_Quads[i];
 				hit_data.Ray_Length = resultRayLength;
 				hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * resultRayLength;
@@ -456,19 +457,19 @@ Hit f_SceneIntersection(const in Ray ray) {
 	for (int i = 0; i < TORUS_COUNT; i++) {
 		float resultRayLength;
 		if (f_TorusIntersection(ray, Scene_Tori[i], resultRayLength)) {
-			if(resultRayLength < hit_data.Ray_Length && resultRayLength > 0.001) {
+			if(resultRayLength < hit_data.Ray_Length && resultRayLength > EPSILON) {
 				Torus torus = Scene_Tori[i];
 				hit_data.Ray_Length = resultRayLength;
 				hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * resultRayLength;
 
 				vec2 q = vec2(length(hit_data.Hit_Pos.xz), hit_data.Hit_Pos.y);
-				hit_data.Hit_New_Dir = normalize(vec3(hit_data.Hit_Pos.x - 2.0 * torus.Torus_Radius * q.x, 2.0 * torus.Torus_Radius * q.y, hit_data.Hit_Pos.z));
+				hit_data.Hit_New_Dir = normalize( hit_data.Hit_Pos*(dot(hit_data.Hit_Pos,hit_data.Hit_Pos)- torus.Torus_Radius*torus.Torus_Radius - torus.Inner_Radius*torus.Inner_Radius*vec3(1.0,1.0,-1.0)));
 				hit_data.Hit_Mat = torus.Mat;
 				hit_data.Hit_Obj = i + SPHERE_COUNT + QUAD_COUNT;
-				if (distance(ray.Ray_Origin, torus.Position) <=torus.Inner_Radius) {
-					hit_data.Ray_Inside = true;
-					//hit_data.Hit_New_Dir *= -1.0;
-				}
+				//if (distance(ray.Ray_Origin, torus.Position) <=torus.Inner_Radius) {
+				//	hit_data.Ray_Inside = true;
+				//	//hit_data.Hit_New_Dir *= -1.0;
+				//}
 			}
 		}
 	}
