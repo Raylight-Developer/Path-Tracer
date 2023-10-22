@@ -1,7 +1,7 @@
 # Path Tracer
 ## Image and Demo:
 (Click on image to open video link)
-[![Alt text](./resources/Screenshot.png)](https://www.youtube.com/embed/XOjoX_zEtkg?si=tjYM8sEvvCY3kLha)
+[![Alt text](./resources/Screenshot.png)](https://www.youtube.com/embed/Cim4s8tpLtc?si=wG-TLhdOrHSyWSEq)
 ## Controls:
 ```
 W/S : Forwards/Backwards
