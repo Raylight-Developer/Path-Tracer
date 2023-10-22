@@ -9,7 +9,6 @@ E/Q : Up/Down
 
 R   : Reread and Recompile Shader
 V   : View Mode Cycle (Path-traced / ZDepth / Ambient Occlusion)
-B   : Toggle Bidirectional Path-tracing
 C   : Reset Camera Position
 P   : Toggle Pause
 ESC : Exit
