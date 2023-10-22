@@ -1,5 +1,13 @@
 # Path Tracer
-![Alt text](./resources/Screenshot.png)
+![Alt text](./resources/Screenshots/S1.png)
+![Alt text](./resources/Screenshots/S2.png)
+![Alt text](./resources/Screenshots/S3.png)
+![Alt text](./resources/Screenshots/S4.png)
+![Alt text](./resources/Screenshots/S5.png)
+![Alt text](./resources/Screenshots/S6.png)
+![Alt text](./resources/Screenshots/S7.png)
+![Alt text](./resources/Screenshots/S8.png)
+![Alt text](./resources/Screenshots/S9.png)
 ```
 Controls:
 

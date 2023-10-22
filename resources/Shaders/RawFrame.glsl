@@ -33,7 +33,7 @@ out vec4 fragColor;
 #define AO_LENGTH     1.0
 
 #define MAX_DIST      5000.0
-#define RAY_BOUNCES   8
+#define RAY_BOUNCES   32
 #define SPP           1
 #define SAMPLES       30
 
