@@ -35,4 +35,5 @@ void main() {
 	vec3 x = max(texture(iAccumulationFrame, fragTexCoord).rgb, 0.0);
 	float r = floor(log2(iResolution.y) - 4.5) + 0.5;
 	fragColor = vec4(ACESFilm(max(xyz2rgb * x, 0.0)), 1.0);
+	fragColor = texture(iAccumulationFrame, fragTexCoord);
 }

@@ -293,6 +293,8 @@ void GLSL_Renderer::f_init() {
 			glUniform3fv(glGetUniformLocation(raw_frame_program.ID, "iCameraFront"), 1,    value_ptr(vec3(camera.z_vector)));
 			glUniform3fv(glGetUniformLocation(raw_frame_program.ID, "iCameraUp"),    1,    value_ptr(vec3(camera.y_vector)));
 			glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iCameraChange"),      iCameraChange);
+			accumulation_tex.f_bind(GL_TEXTURE1);
+			glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iLastFrame"), 1);
 			background_tex.f_bind(GL_TEXTURE2);
 			glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iHdri"), 2);
 
