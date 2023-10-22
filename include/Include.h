@@ -43,14 +43,3 @@ using namespace glm;
 #define INVERTED_PI 0.318309886183791
 #define DEG_RAD     0.017453292519943
 #define EULER       2.718281828459045
-
-
-struct File_Extension {
-	enum Enum {
-		BMP,
-		EXR,
-		HDR,
-		JPG,
-		PNG
-	};
-};

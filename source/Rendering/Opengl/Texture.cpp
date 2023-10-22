@@ -1,8 +1,8 @@
 #include "Rendering/Opengl/Texture.h"
 
-void Texture::f_init(const string& i_image_path, const File_Extension::Enum& i_type) {
+void Texture::f_init(const string& i_image_path) {
 	Image texture = Image();
-	if (texture.f_load(i_image_path, i_type)) {
+	if (texture.f_load(i_image_path)) {
 		glGenTextures(1, &ID);
 		glBindTexture(GL_TEXTURE_2D, ID);
 		glTexImage2D(GL_TEXTURE_2D, 0, texture.channel_fromat, texture.width, texture.height, 0, texture.channel_fromat, texture.data_type, texture.data);

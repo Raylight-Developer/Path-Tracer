@@ -140,11 +140,6 @@ void GLSL_Renderer::key_callback(GLFWwindow* window, int key, int scancode, int 
 		instance->iCameraChange = true;
 		instance->iFrame = 0;
 	}
-	if (key == GLFW_KEY_B && action == GLFW_PRESS) {
-		instance->iBidirectional = !instance->iBidirectional;
-		instance->iCameraChange = true;
-		instance->iFrame = 0;
-	}
 	if (key == GLFW_KEY_C && action == GLFW_PRESS) {
 		instance->camera = Camera();
 		instance->iCameraChange = true;
@@ -174,7 +169,7 @@ void GLSL_Renderer::f_init() {
 	GLFWwindow* window = glfwCreateWindow(iResolution.x, iResolution.y, "GLSL Renderer", NULL, NULL);
 	
 	Image icon = Image();
-	if (icon.f_load("./resources/Icon.png", File_Extension::PNG)) {
+	if (icon.f_load("./resources/Icon.png")) {
 		GLFWimage image_icon;
 		image_icon.width = icon.width;
 		image_icon.height = icon.height;
@@ -237,7 +232,10 @@ void GLSL_Renderer::f_init() {
 	accumulation_fbo.f_unbind();
 
 	Texture background_tex = Texture();
-	background_tex.f_init("D:/UVG/Path-Tracer/resources/Background.png", File_Extension::PNG);
+	background_tex.f_init("D:/UVG/Path-Tracer/resources/Background.png");
+
+	Texture object_tex = Texture();
+	object_tex.f_init("D:/UVG/Path-Tracer/resources/Texture.png");
 
 	glClearColor(0, 0, 0, 1);
 	while (!glfwWindowShouldClose(window)) {
@@ -273,7 +271,6 @@ void GLSL_Renderer::f_init() {
 				iFrame = 0;
 			}
 			GLfloat Time = GLfloat(glfwGetTime() - iTime);
-			//frame_time = glfwGetTime() - last_frame_time;
 
 			main_vao.f_bind();
 
@@ -295,6 +292,8 @@ void GLSL_Renderer::f_init() {
 			glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iCameraChange"),      iCameraChange);
 			accumulation_tex.f_bind(GL_TEXTURE1);
 			glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iLastFrame"), 1);
+			object_tex.f_bind(GL_TEXTURE3);
+			glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iAlbedo"), 3);
 			background_tex.f_bind(GL_TEXTURE2);
 			glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iHdri"), 2);
 
