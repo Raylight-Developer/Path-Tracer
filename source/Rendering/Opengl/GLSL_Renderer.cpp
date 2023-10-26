@@ -26,8 +26,10 @@ GLSL_Renderer::GLSL_Renderer() {
 	keys = vector(348, false);
 	last_mouse = dvec2(iResolution) / 2.0;
 
-	last_frame_time = 0;
-	frame_time = 0.01;
+	last_time = 0;
+	current_time = 0;
+	window_time = 0.0;
+	frame_time = 0.0;
 
 	main_vao         = VAO();
 	main_vbo         = VBO();
@@ -43,7 +45,7 @@ GLSL_Renderer::GLSL_Renderer() {
 	pause = false;
 }
 
-void GLSL_Renderer::recompile() {
+void GLSL_Renderer::f_recompile() {
 	raw_frame_program.f_compile();
 	accumulation_program.f_compile();
 	postprocess_program.f_compile();
@@ -133,7 +135,7 @@ void GLSL_Renderer::key_callback(GLFWwindow* window, int key, int scancode, int 
 	GLSL_Renderer* instance = static_cast<GLSL_Renderer*>(glfwGetWindowUserPointer(window));
 	// Input Handling
 	if (key == GLFW_KEY_R && action == GLFW_PRESS) {
-		instance->recompile();
+		instance->f_recompile();
 	}
 	if (key == GLFW_KEY_V && action == GLFW_PRESS) {
 		instance->render_mode = switchRenderMode(instance->render_mode);
@@ -270,7 +272,11 @@ void GLSL_Renderer::f_init() {
 				iCameraChange = true;
 				iFrame = 0;
 			}
-			GLfloat Time = GLfloat(glfwGetTime() - iTime);
+			current_time = clock();
+			frame_time = float(current_time - last_time) / CLOCKS_PER_SEC;
+			last_time = current_time;
+			iTime += frame_time;
+			window_time += frame_time;
 
 			main_vao.f_bind();
 
@@ -278,7 +284,7 @@ void GLSL_Renderer::f_init() {
 			glClear(GL_COLOR_BUFFER_BIT);
 			raw_frame_program.f_activate();
 
-			glUniform1f (glGetUniformLocation(raw_frame_program.ID, "iTime"),          Time);
+			glUniform1f (glGetUniformLocation(raw_frame_program.ID, "iTime"),          GLfloat(iTime));
 			glUniform1ui(glGetUniformLocation(raw_frame_program.ID, "iFrame"),         GLuint(iFrame));
 			glUniform2fv(glGetUniformLocation(raw_frame_program.ID, "iResolution"),    1, value_ptr(vec2(iResolution)));
 			glUniform1ui(glGetUniformLocation(raw_frame_program.ID, "iRenderMode"),    static_cast<GLuint>(render_mode));
@@ -306,7 +312,7 @@ void GLSL_Renderer::f_init() {
 			accumulation_fbo.f_bind();
 			accumulation_program.f_activate();
 
-			glUniform1f (glGetUniformLocation(accumulation_program.ID, "iTime"),         Time);
+			glUniform1f (glGetUniformLocation(accumulation_program.ID, "iTime"),         GLfloat(iTime));
 			glUniform1ui(glGetUniformLocation(accumulation_program.ID, "iFrame"),        GLuint(iFrame));
 			glUniform1ui(glGetUniformLocation(accumulation_program.ID, "iRenderMode"),   static_cast<GLuint>(render_mode));
 			glUniform1i (glGetUniformLocation(accumulation_program.ID, "iCameraChange"), iCameraChange);
@@ -325,7 +331,7 @@ void GLSL_Renderer::f_init() {
 
 			postprocess_program.f_activate();
 
-			glUniform1f (glGetUniformLocation(postprocess_program.ID, "iTime"),          Time);
+			glUniform1f (glGetUniformLocation(postprocess_program.ID, "iTime"),          GLfloat(iTime));
 			glUniform1ui(glGetUniformLocation(postprocess_program.ID, "iFrame"),         GLuint(iFrame));
 			glUniform2fv(glGetUniformLocation(postprocess_program.ID, "iResolution"), 1, value_ptr(vec2(iResolution)));
 			glUniform1ui(glGetUniformLocation(postprocess_program.ID, "iRenderMode"),    static_cast<GLuint>(render_mode));
@@ -340,6 +346,13 @@ void GLSL_Renderer::f_init() {
 
 			iFrame++;
 			iCameraChange = false;
+
+			if (window_time > 0.5) {
+				window_time -= 0.5;
+				Lace title;
+				title << "KerzenLicht | " << 1.0 / frame_time << " Fps";
+				glfwSetWindowTitle(window, title.cstr());
+			}
 		}
 		glfwSwapBuffers(window);
 		glfwPollEvents();

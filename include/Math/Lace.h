@@ -58,4 +58,5 @@ struct Lace {
 	Lace& operator>> (const uvec3& i_value);
 	Lace& operator>> (const uvec4& i_value);
 	string str() const;
+	const char* cstr() const;
 };

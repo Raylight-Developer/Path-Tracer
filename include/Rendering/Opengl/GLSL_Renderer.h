@@ -38,14 +38,15 @@ struct GLSL_Renderer {
 
 	Camera camera;
 
-	// Control Input Variables
 	Render_Mode::Enum render_mode;
 	double camera_move_sensitivity;
 	double camera_view_sensitivity;
 	vector<bool> keys;
 	dvec2  last_mouse;
 
-	double last_frame_time;
+	clock_t last_time;
+	clock_t current_time;
+	double window_time;
 	double frame_time;
 
 	VAO main_vao;
@@ -63,7 +64,7 @@ struct GLSL_Renderer {
 
 	GLSL_Renderer();
 
-	void recompile();
+	void f_recompile();
 	void f_init();
 
 	static void framebuffer_size_callback(GLFWwindow* window, int width, int height);

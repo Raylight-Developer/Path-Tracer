@@ -280,3 +280,7 @@ Lace& Lace::operator>> (const uvec4& i_value) {
 string Lace::str() const {
 	return string_data.str();
 }
+
+const char* Lace::cstr() const {
+	return string_data.str().c_str();
+}
