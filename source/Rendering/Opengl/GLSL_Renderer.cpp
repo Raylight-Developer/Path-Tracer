@@ -41,8 +41,6 @@ GLSL_Renderer::GLSL_Renderer() {
 	raw_frame_program      = Shader_Program("Raw Image");
 	accumulation_program   = Shader_Program("Accumulation Program");
 	postprocess_program    = Shader_Program("Post Process");
-
-	pause = false;
 }
 
 void GLSL_Renderer::f_recompile() {
@@ -150,9 +148,6 @@ void GLSL_Renderer::key_callback(GLFWwindow* window, int key, int scancode, int 
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, GLFW_TRUE);
 	}
-	if (key == GLFW_KEY_P && action == GLFW_PRESS) {
-		instance->pause = !instance->pause;
-	}
 	if (action == GLFW_PRESS) {
 		instance->keys[key] = true;
 	}
@@ -241,119 +236,118 @@ void GLSL_Renderer::f_init() {
 
 	glClearColor(0, 0, 0, 1);
 	while (!glfwWindowShouldClose(window)) {
-		if (!pause) {
-			if (keys[GLFW_KEY_D]) {
-				camera.f_move(1, 0, 0, camera_move_sensitivity);
-				iCameraChange = true;
-				iFrame = 0;
-			}
-			if (keys[GLFW_KEY_A]) {
-				camera.f_move(-1, 0, 0, camera_move_sensitivity);
-				iCameraChange = true;
-				iFrame = 0;
-			}
-			if (keys[GLFW_KEY_E] || keys[GLFW_KEY_SPACE]) {
-				camera.f_move(0, 1, 0, camera_move_sensitivity);
-				iCameraChange = true;
-				iFrame = 0;
-			}
-			if (keys[GLFW_KEY_Q] || keys[GLFW_KEY_LEFT_CONTROL]) {
-				camera.f_move(0, -1, 0, camera_move_sensitivity);
-				iCameraChange = true;
-				iFrame = 0;
-			}
-			if (keys[GLFW_KEY_W]) {
-				camera.f_move(0, 0, 1, camera_move_sensitivity);
-				iCameraChange = true;
-				iFrame = 0;
-			}
-			if (keys[GLFW_KEY_S]) {
-				camera.f_move(0, 0, -1, camera_move_sensitivity);
-				iCameraChange = true;
-				iFrame = 0;
-			}
-			current_time = clock();
-			frame_time = float(current_time - last_time) / CLOCKS_PER_SEC;
-			last_time = current_time;
-			iTime += frame_time;
-			window_time += frame_time;
-
-			main_vao.f_bind();
-
-			raw_frame_fbo.f_bind();
-			glClear(GL_COLOR_BUFFER_BIT);
-			raw_frame_program.f_activate();
-
-			glUniform1f (glGetUniformLocation(raw_frame_program.ID, "iTime"),          GLfloat(iTime));
-			glUniform1ui(glGetUniformLocation(raw_frame_program.ID, "iFrame"),         GLuint(iFrame));
-			glUniform2fv(glGetUniformLocation(raw_frame_program.ID, "iResolution"),    1, value_ptr(vec2(iResolution)));
-			glUniform1ui(glGetUniformLocation(raw_frame_program.ID, "iRenderMode"),    static_cast<GLuint>(render_mode));
-			glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iBidirectional"), iBidirectional);
-
-			glUniform1f (glGetUniformLocation(raw_frame_program.ID, "iCameraFocalLength"), GLfloat(camera.focal_length));
-			glUniform1f (glGetUniformLocation(raw_frame_program.ID, "iCameraSensorWidth"), GLfloat(camera.sensor_width));
-			glUniform3fv(glGetUniformLocation(raw_frame_program.ID, "iCameraPos"),   1,    value_ptr(vec3(camera.position)));
-			glUniform3fv(glGetUniformLocation(raw_frame_program.ID, "iCameraFront"), 1,    value_ptr(vec3(camera.z_vector)));
-			glUniform3fv(glGetUniformLocation(raw_frame_program.ID, "iCameraUp"),    1,    value_ptr(vec3(camera.y_vector)));
-			glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iCameraChange"),      iCameraChange);
-			accumulation_tex.f_bind(GL_TEXTURE1);
-			glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iLastFrame"), 1);
-			object_tex.f_bind(GL_TEXTURE3);
-			glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iAlbedo"), 3);
-			background_tex.f_bind(GL_TEXTURE2);
-			glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iHdri"), 2);
-
-			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-			raw_frame_fbo.f_unbind();
-
-			// Activate Accumulation Shader
-
-			accumulation_fbo.f_bind();
-			accumulation_program.f_activate();
-
-			glUniform1f (glGetUniformLocation(accumulation_program.ID, "iTime"),         GLfloat(iTime));
-			glUniform1ui(glGetUniformLocation(accumulation_program.ID, "iFrame"),        GLuint(iFrame));
-			glUniform1ui(glGetUniformLocation(accumulation_program.ID, "iRenderMode"),   static_cast<GLuint>(render_mode));
-			glUniform1i (glGetUniformLocation(accumulation_program.ID, "iCameraChange"), iCameraChange);
-			raw_frame_tex.f_bind(GL_TEXTURE0);
-			glUniform1i (glGetUniformLocation(accumulation_program.ID, "iRawFrame"), 0);
-			accumulation_tex.f_bind(GL_TEXTURE1);
-			glUniform1i (glGetUniformLocation(accumulation_program.ID, "iLastFrame"), 1);
-
-			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-			raw_frame_tex.f_unbind();
-			accumulation_tex.f_unbind();
-			accumulation_fbo.f_unbind();
-
-			// Activate Postprocessing Shader
-
-			postprocess_program.f_activate();
-
-			glUniform1f (glGetUniformLocation(postprocess_program.ID, "iTime"),          GLfloat(iTime));
-			glUniform1ui(glGetUniformLocation(postprocess_program.ID, "iFrame"),         GLuint(iFrame));
-			glUniform2fv(glGetUniformLocation(postprocess_program.ID, "iResolution"), 1, value_ptr(vec2(iResolution)));
-			glUniform1ui(glGetUniformLocation(postprocess_program.ID, "iRenderMode"),    static_cast<GLuint>(render_mode));
-			glUniform1i (glGetUniformLocation(postprocess_program.ID, "iBidirectional"), iBidirectional);
-			glUniform1i (glGetUniformLocation(postprocess_program.ID, "iCameraChange"),  iCameraChange);
-			raw_frame_tex.f_bind(GL_TEXTURE0);
-			glUniform1i (glGetUniformLocation(postprocess_program.ID, "iRawFrame"), 0);
-			accumulation_tex.f_bind(GL_TEXTURE1);
-			glUniform1i (glGetUniformLocation(postprocess_program.ID, "iAccumulationFrame"), 1);
-
-			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-			iFrame++;
-			iCameraChange = false;
-
-			if (window_time > 0.5) {
-				window_time -= 0.5;
-				Lace title;
-				title << "KerzenLicht | " << 1.0 / frame_time << " Fps";
-				glfwSetWindowTitle(window, title.cstr());
-			}
+		if (keys[GLFW_KEY_D]) {
+			camera.f_move(1, 0, 0, camera_move_sensitivity);
+			iCameraChange = true;
+			iFrame = 0;
 		}
+		if (keys[GLFW_KEY_A]) {
+			camera.f_move(-1, 0, 0, camera_move_sensitivity);
+			iCameraChange = true;
+			iFrame = 0;
+		}
+		if (keys[GLFW_KEY_E] || keys[GLFW_KEY_SPACE]) {
+			camera.f_move(0, 1, 0, camera_move_sensitivity);
+			iCameraChange = true;
+			iFrame = 0;
+		}
+		if (keys[GLFW_KEY_Q] || keys[GLFW_KEY_LEFT_CONTROL]) {
+			camera.f_move(0, -1, 0, camera_move_sensitivity);
+			iCameraChange = true;
+			iFrame = 0;
+		}
+		if (keys[GLFW_KEY_W]) {
+			camera.f_move(0, 0, 1, camera_move_sensitivity);
+			iCameraChange = true;
+			iFrame = 0;
+		}
+		if (keys[GLFW_KEY_S]) {
+			camera.f_move(0, 0, -1, camera_move_sensitivity);
+			iCameraChange = true;
+			iFrame = 0;
+		}
+		current_time = clock();
+		frame_time = float(current_time - last_time) / CLOCKS_PER_SEC;
+		last_time = current_time;
+		iTime += frame_time;
+		window_time += frame_time;
+
+		main_vao.f_bind();
+
+		raw_frame_fbo.f_bind();
+		glClear(GL_COLOR_BUFFER_BIT);
+		raw_frame_program.f_activate();
+
+		glUniform1f (glGetUniformLocation(raw_frame_program.ID, "iTime"),          GLfloat(iTime));
+		glUniform1ui(glGetUniformLocation(raw_frame_program.ID, "iFrame"),         GLuint(iFrame));
+		glUniform2fv(glGetUniformLocation(raw_frame_program.ID, "iResolution"),    1, value_ptr(vec2(iResolution)));
+		glUniform1ui(glGetUniformLocation(raw_frame_program.ID, "iRenderMode"),    static_cast<GLuint>(render_mode));
+		glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iBidirectional"), iBidirectional);
+
+		glUniform1f (glGetUniformLocation(raw_frame_program.ID, "iCameraFocalLength"), GLfloat(camera.focal_length));
+		glUniform1f (glGetUniformLocation(raw_frame_program.ID, "iCameraSensorWidth"), GLfloat(camera.sensor_width));
+		glUniform3fv(glGetUniformLocation(raw_frame_program.ID, "iCameraPos"),   1,    value_ptr(vec3(camera.position)));
+		glUniform3fv(glGetUniformLocation(raw_frame_program.ID, "iCameraFront"), 1,    value_ptr(vec3(camera.z_vector)));
+		glUniform3fv(glGetUniformLocation(raw_frame_program.ID, "iCameraUp"),    1,    value_ptr(vec3(camera.y_vector)));
+		glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iCameraChange"),      iCameraChange);
+		accumulation_tex.f_bind(GL_TEXTURE1);
+		glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iLastFrame"), 1);
+		object_tex.f_bind(GL_TEXTURE3);
+		glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iAlbedo"), 3);
+		background_tex.f_bind(GL_TEXTURE2);
+		glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iHdri"), 2);
+
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+		raw_frame_fbo.f_unbind();
+
+		// Activate Accumulation Shader
+
+		accumulation_fbo.f_bind();
+		accumulation_program.f_activate();
+
+		glUniform1f (glGetUniformLocation(accumulation_program.ID, "iTime"),         GLfloat(iTime));
+		glUniform1ui(glGetUniformLocation(accumulation_program.ID, "iFrame"),        GLuint(iFrame));
+		glUniform1ui(glGetUniformLocation(accumulation_program.ID, "iRenderMode"),   static_cast<GLuint>(render_mode));
+		glUniform1i (glGetUniformLocation(accumulation_program.ID, "iCameraChange"), iCameraChange);
+		raw_frame_tex.f_bind(GL_TEXTURE0);
+		glUniform1i (glGetUniformLocation(accumulation_program.ID, "iRawFrame"), 0);
+		accumulation_tex.f_bind(GL_TEXTURE1);
+		glUniform1i (glGetUniformLocation(accumulation_program.ID, "iLastFrame"), 1);
+
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+		raw_frame_tex.f_unbind();
+		accumulation_tex.f_unbind();
+		accumulation_fbo.f_unbind();
+
+		// Activate Postprocessing Shader
+
+		postprocess_program.f_activate();
+
+		glUniform1f (glGetUniformLocation(postprocess_program.ID, "iTime"),          GLfloat(iTime));
+		glUniform1ui(glGetUniformLocation(postprocess_program.ID, "iFrame"),         GLuint(iFrame));
+		glUniform2fv(glGetUniformLocation(postprocess_program.ID, "iResolution"), 1, value_ptr(vec2(iResolution)));
+		glUniform1ui(glGetUniformLocation(postprocess_program.ID, "iRenderMode"),    static_cast<GLuint>(render_mode));
+		glUniform1i (glGetUniformLocation(postprocess_program.ID, "iBidirectional"), iBidirectional);
+		glUniform1i (glGetUniformLocation(postprocess_program.ID, "iCameraChange"),  iCameraChange);
+		raw_frame_tex.f_bind(GL_TEXTURE0);
+		glUniform1i (glGetUniformLocation(postprocess_program.ID, "iRawFrame"), 0);
+		accumulation_tex.f_bind(GL_TEXTURE1);
+		glUniform1i (glGetUniformLocation(postprocess_program.ID, "iAccumulationFrame"), 1);
+
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+		iFrame++;
+		iCameraChange = false;
+
+		if (window_time > 5.0) {
+			window_time -= 5.0;
+			Lace title;
+			title << "KerzenLicht | " << 1.0 / frame_time << " Fps";
+			glfwSetWindowTitle(window, title.cstr());
+		}
+
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}

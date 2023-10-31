@@ -153,6 +153,10 @@ struct Sphere {
 	float    Diameter;
 	Material Mat;
 };
+struct BVH {
+	vec3  Position;
+	float Size;
+};
 struct Quad {
 	vec3 v0;
 	vec3 v1;
@@ -168,27 +172,16 @@ struct Tri {
 };
 
 // SCENE ---------------------------------------------------------------------------------------
-#define SPHERE_COUNT 6
-#define QUAD_COUNT   7
+#define SPHERE_COUNT 1
+#define QUAD_COUNT   1
 
 const Sphere Scene_Spheres[SPHERE_COUNT] = Sphere[SPHERE_COUNT](
-		// POSITION                      , RADIUS  ,          Type     , Color              , Emissiveness, Roughness, IOR
-	Sphere(vec3( -1    ,  0.3   , -1    ), 0.2     , Material(DIFFUSE  , vec3(1  , 1  , 1  ), 0           , 1        , 1.2 )),
-	Sphere(vec3( -1    ,  0.9   , -1    ), 0.2     , Material(DIFFUSE  , vec3(1  , 1  , 1  ), 0           , 0        , 1.2 )),
-	Sphere(vec3( -1    ,  1.5   , -1    ), 0.2     , Material(GLASS    , vec3(1  , 1  , 1  ), 0           , 0        , 1.2 )),
-	Sphere(vec3(  1    ,  0.3   , -1    ), 0.2     , Material(DIFFUSE  , vec3(1  , 0  , 0  ), 0           , 0        , 1.2 )),
-	Sphere(vec3(  1    ,  0.9   , -1    ), 0.2     , Material(DIFFUSE  , vec3(0  , 1  , 0  ), 0           , 0.1      , 1.2 )),
-	Sphere(vec3(  1    ,  1.5   , -1    ), 0.2     , Material(DIFFUSE  , vec3(0  , 0  , 1  ), 0           , 0        , 1.2 ))
+		// POSITION           , RADIUS,          Type     , Color              , Emissiveness, Roughness, IOR
+	Sphere(vec3( 0 , 0.5 , 0 ), 0.5   , Material(DIFFUSE  , vec3(1  , 1  , 1  ), 0           , 0.5      , 1.35 ))
 );
 const Quad Scene_Quads[QUAD_COUNT] = Quad[QUAD_COUNT](
-	// VERT_A                    , VERT_B                  , VERT_C                  , VERT_D                  ,          Type     , Color              , Emissiveness, Roughness, IOR
-	Quad(vec3( -2.66 , 0  , -15 ), vec3(  2.66 , 0  , -15 ), vec3(  2.66 , 0  ,  5  ), vec3( -2.66 , 0  ,  5  ), Material(DIFFUSE  , vec3(1  , 1  , 1  ), 0           , 1        , 1.0 )), // Floor
-	Quad(vec3(  2.66 , 0  , -15 ), vec3(  2.66 , 0  ,  5  ), vec3(  2.66 , 3  ,  5  ), vec3(  2.66 , 3  , -15 ), Material(DIFFUSE  , vec3(1  , 1  , 1  ), 0           , 0.01     , 1.0 )), // Right Wall
-	Quad(vec3( -2.66 , 0  , -15 ), vec3( -2.66 , 0  ,  5  ), vec3( -2.66 , 3  ,  5  ), vec3( -2.66 , 3  , -15 ), Material(DIFFUSE  , vec3(1  , 1  , 1  ), 0           , 0.01     , 1.0 )), // Left  Wall
-	Quad(vec3( -2.66 , 0  , -15 ), vec3(  2.66 , 0  , -15 ), vec3(  2.66 , 3  , -15 ), vec3( -2.66 , 3  , -15 ), Material(TEXTURED , vec3(1  , 1  , 1  ), 0           , 1        , 1.0 )), // Back  Wall
-	Quad(vec3( -2.66 , 3  , -15 ), vec3(  2.66 , 3  , -15 ), vec3(  2.66 , 3  ,  5  ), vec3( -2.66 , 3  ,  5  ), Material(DIFFUSE  , vec3(1  , 1  , 1  ), 0           , 1        , 1.0 )), // Ceiling
-	Quad(vec3( -1.8  , 2.9, -10 ), vec3( -1    , 2.9, -10 ), vec3( -1    , 2.9,  3  ), vec3( -1.8  , 2.9,  3  ), Material(EMISSIVE , vec3(1  , 1  , 1  ), 2.5         , 1        , 1.0 )), // Light Right
-	Quad(vec3(  1.8  , 2.9, -10 ), vec3(  1    , 2.9, -10 ), vec3(  1    , 2.9,  3  ), vec3(  1.8  , 2.9,  3  ), Material(EMISSIVE , vec3(1  , 1  , 1  ), 2.5         , 1        , 1.0 ))  // Light Left
+	// VERT_A                , VERT_B               , VERT_C              , VERT_D              ,          Type     , Color              , Emissiveness, Roughness, IOR
+	Quad(vec3( -5 , 0  , -5 ), vec3(   5 , 0  , -5 ), vec3(  5 , 0  ,  5 ), vec3( -5 , 0  ,  5 ), Material(TEXTURED , vec3(1  , 1  , 1  ), 0           , 1        , 1.0 )) // Floor
 );
 
 // INTERSECTIONS ---------------------------------------------------------------------------------------
@@ -214,7 +207,27 @@ bool f_SphereIntersection(in Ray ray, in Sphere sphere, inout float ray_length) 
 	}
 	return false;
 }
+/*
+bool f_BVHIntersection(in Ray ray, in BVH bvh, inout float ray_length) {
+	ray.Ray_Origin = ray.Ray_Origin - bvh.Position;
 
+	if (any(abs(ray.Ray_Origin) > boxExtent && rayOrigin * direction >= 0.0)) {
+		return false;
+	}
+
+	// Perform AABB-line test
+	float3 WxD = cross(direction, rayOrigin);
+	float3 absWdU = abs(direction);
+	if (any(WxD > float3(dot(boxExtent.yz, absWdU.zy),
+						dot(boxExtent.xz, absWdU.zx),
+						dot(boxExtent.xy, absWdU.yx))))
+	{
+		return false;
+	}
+
+	return true;
+}
+*/
 bool f_QuadIntersection(in Ray ray, in Quad quad, inout float ray_length, out vec2 uv) {
 	vec3 a = quad.v1 - quad.v0;
 	vec3 b = quad.v3 - quad.v0;
@@ -381,7 +394,7 @@ vec3 f_Radiance(in Ray r){
 			float sini = sqrt(1. - cosi * cosi);
 			float iort = hit_data.Hit_Mat.IOR;
 			float iori = 1.0;
-			if (hit_data.Ray_Inside){
+			if (hit_data.Ray_Inside) {
 				iori = iort;
 				iort = 1.0;
 			}

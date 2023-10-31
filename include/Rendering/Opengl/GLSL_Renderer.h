@@ -60,8 +60,6 @@ struct GLSL_Renderer {
 	Shader_Program accumulation_program;
 	Shader_Program postprocess_program;
 
-	bool pause;
-
 	GLSL_Renderer();
 
 	void f_recompile();
