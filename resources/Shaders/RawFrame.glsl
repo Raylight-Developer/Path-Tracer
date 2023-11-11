@@ -14,7 +14,7 @@ uniform vec3  iCameraUp;
 uniform bool  iCameraChange;
 
 uniform sampler2D iLastFrame;
-uniform sampler2D iAlbedo;
+uniform sampler2D iTextures;
 uniform sampler2D iHdri;
 
 in vec2 fragCoord;
@@ -30,18 +30,15 @@ out vec4 fragColor;
 #define M_E         2.71828182846
 
 #define HDRI_STRENGTH 1.0
-#define AO_LENGTH     1.0
 
 #define MAX_DIST      5000.0
-#define RAY_BOUNCES   32
+#define RAY_BOUNCES   4
 #define SPP           1
-#define SAMPLES       30
+#define SAMPLES       32
 
 #define EPSILON       0.001
 
 // CONSTANTS ---------------------------------------------------------------------------------------
-
-const int Quad_Face[4] = int[](1,2,0,1);
 
 // GLOBALS ---------------------------------------------------------------------------------------
 
@@ -123,18 +120,11 @@ mat3 eulerToRot(vec3 euler) {
 
 // STRUCTS ---------------------------------------------------------------------------------------
 
-#define DIFFUSE  0
+#define FRAME    0
 #define GLASS    1
 #define EMISSIVE 2
 #define TEXTURED 3
 
-struct Material {
-	int   Type;
-	vec3  Color;
-	float Emissive_Strength;
-	float Roughness;
-	float IOR;
-};
 struct Ray {
 	vec3  Ray_Origin;
 	vec3  Ray_Direction;
@@ -145,56 +135,630 @@ struct Hit {
 	vec3  Hit_Pos;
 	int   Hit_Obj;
 	bool  Ray_Inside;
-	Material Hit_Mat;
+	int   Hit_Mat;
 	vec2  Hit_UV;
 };
+struct Cube {
+	vec3 Position;
+	int  Mat;
+};
+struct BOX{
+	vec3 Position;
+	vec3 Size;
+	int  Mat;
+};
 struct Sphere {
-	vec3     Position;
-	float    Diameter;
-	Material Mat;
-};
-struct BVH {
 	vec3  Position;
-	float Size;
-};
-struct Quad {
-	vec3 v0;
-	vec3 v1;
-	vec3 v2;
-	vec3 v3;
-	Material Mat;
-};
-struct Tri {
-	vec3     v0;
-	vec3     v1;
-	vec3     v2;
-	Material Mat;
+	float Diameter;
+	int   Mat;
 };
 
 // SCENE ---------------------------------------------------------------------------------------
 #define SPHERE_COUNT 1
-#define QUAD_COUNT   1
+#define LIGHTS_COUNT 4
+#define GLASS_COUNT 5
+#define FRAME_COUNT (30 * 2 + 28 * 2) *2 + ( 28 * 2 + 26 * 2) * 2 + (12 * 4) + (12 * 4)
 
 const Sphere Scene_Spheres[SPHERE_COUNT] = Sphere[SPHERE_COUNT](
-		// POSITION           , RADIUS,          Type     , Color              , Emissiveness, Roughness, IOR
-	Sphere(vec3( 0 , 0.5 , 0 ), 0.5   , Material(DIFFUSE  , vec3(1  , 1  , 1  ), 0           , 0.5      , 1.35 ))
+	Sphere(vec3( 0 , 50 , 0 ), 15, GLASS)
 );
-const Quad Scene_Quads[QUAD_COUNT] = Quad[QUAD_COUNT](
-	// VERT_A                , VERT_B               , VERT_C              , VERT_D              ,          Type     , Color              , Emissiveness, Roughness, IOR
-	Quad(vec3( -5 , 0  , -5 ), vec3(   5 , 0  , -5 ), vec3(  5 , 0  ,  5 ), vec3( -5 , 0  ,  5 ), Material(TEXTURED , vec3(1  , 1  , 1  ), 0           , 1        , 1.0 )) // Floor
+
+const Cube Scene_Lights[LIGHTS_COUNT] = Cube[LIGHTS_COUNT](
+	Cube(vec3(  13.5 , 14 ,  13.5 ), EMISSIVE),
+	Cube(vec3(  13.5 , 14 , -13.5 ), EMISSIVE),
+	Cube(vec3( -13.5 , 14 ,  13.5 ), EMISSIVE),
+	Cube(vec3( -13.5 , 14 , -13.5 ), EMISSIVE)
+);
+
+const BOX Scene_Glass[GLASS_COUNT] = BOX[GLASS_COUNT](
+	BOX(vec3(  0    , 0   ,  0    ), vec3( 13 , 0.5 , 13  ), GLASS),
+	BOX(vec3(  13.5 , 6.5 ,  0    ), vec3( 0.1 , 6  , 13  ), GLASS),
+	BOX(vec3( -13.5 , 6.5 ,  0    ), vec3( 0.1 , 6  , 13  ), GLASS),
+	BOX(vec3(  0    , 6.5 ,  13.5 ), vec3( 13  , 6  , 0.1 ), GLASS),
+	BOX(vec3(  0    , 6.5 , -13.5 ), vec3( 13  , 6  , 0.1 ), GLASS)
+);
+
+const Cube Scene_Frame[FRAME_COUNT] = Cube[FRAME_COUNT](
+	// Bottom --------------------------------
+	Cube(vec3( -14.5 , 0  ,  14.5 ), FRAME),
+	Cube(vec3( -13.5 , 0  ,  14.5 ), FRAME),
+	Cube(vec3( -12.5 , 0  ,  14.5 ), FRAME),
+	Cube(vec3( -11.5 , 0  ,  14.5 ), FRAME),
+	Cube(vec3( -10.5 , 0  ,  14.5 ), FRAME),
+	Cube(vec3( -9.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3( -8.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3( -7.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3( -6.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3( -5.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3( -4.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3( -3.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3( -2.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3( -1.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3( -0.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3(  0.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3(  1.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3(  2.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3(  3.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3(  4.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3(  5.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3(  6.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3(  7.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3(  8.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3(  9.5  , 0  ,  14.5 ), FRAME),
+	Cube(vec3(  10.5 , 0  ,  14.5 ), FRAME),
+	Cube(vec3(  11.5 , 0  ,  14.5 ), FRAME),
+	Cube(vec3(  12.5 , 0  ,  14.5 ), FRAME),
+	Cube(vec3(  13.5 , 0  ,  14.5 ), FRAME),
+	Cube(vec3(  14.5 , 0  ,  14.5 ), FRAME),
+	//
+	Cube(vec3( -14.5 , 0  , -14.5 ), FRAME),
+	Cube(vec3( -13.5 , 0  , -14.5 ), FRAME),
+	Cube(vec3( -12.5 , 0  , -14.5 ), FRAME),
+	Cube(vec3( -11.5 , 0  , -14.5 ), FRAME),
+	Cube(vec3( -10.5 , 0  , -14.5 ), FRAME),
+	Cube(vec3( -9.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3( -8.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3( -7.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3( -6.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3( -5.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3( -4.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3( -3.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3( -2.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3( -1.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3( -0.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3(  0.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3(  1.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3(  2.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3(  3.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3(  4.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3(  5.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3(  6.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3(  7.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3(  8.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3(  9.5  , 0  , -14.5 ), FRAME),
+	Cube(vec3(  10.5 , 0  , -14.5 ), FRAME),
+	Cube(vec3(  11.5 , 0  , -14.5 ), FRAME),
+	Cube(vec3(  12.5 , 0  , -14.5 ), FRAME),
+	Cube(vec3(  13.5 , 0  , -14.5 ), FRAME),
+	Cube(vec3(  14.5 , 0  , -14.5 ), FRAME),
+	//
+	Cube(vec3(  14.5 , 0  , -13.5 ), FRAME),
+	Cube(vec3(  14.5 , 0  , -12.5 ), FRAME),
+	Cube(vec3(  14.5 , 0  , -11.5 ), FRAME),
+	Cube(vec3(  14.5 , 0  , -10.5 ), FRAME),
+	Cube(vec3(  14.5 , 0  , -9.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  , -8.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  , -7.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  , -6.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  , -5.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  , -4.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  , -3.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  , -2.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  , -1.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  , -0.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  ,  0.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  ,  1.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  ,  2.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  ,  3.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  ,  4.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  ,  5.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  ,  6.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  ,  7.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  ,  8.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  ,  9.5  ), FRAME),
+	Cube(vec3(  14.5 , 0  ,  10.5 ), FRAME),
+	Cube(vec3(  14.5 , 0  ,  11.5 ), FRAME),
+	Cube(vec3(  14.5 , 0  ,  12.5 ), FRAME),
+	Cube(vec3(  14.5 , 0  ,  13.5 ), FRAME),
+	//
+	Cube(vec3( -14.5 , 0  , -13.5 ), FRAME),
+	Cube(vec3( -14.5 , 0  , -12.5 ), FRAME),
+	Cube(vec3( -14.5 , 0  , -11.5 ), FRAME),
+	Cube(vec3( -14.5 , 0  , -10.5 ), FRAME),
+	Cube(vec3( -14.5 , 0  , -9.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  , -8.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  , -7.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  , -6.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  , -5.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  , -4.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  , -3.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  , -2.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  , -1.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  , -0.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  ,  0.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  ,  1.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  ,  2.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  ,  3.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  ,  4.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  ,  5.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  ,  6.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  ,  7.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  ,  8.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  ,  9.5  ), FRAME),
+	Cube(vec3( -14.5 , 0  ,  10.5 ), FRAME),
+	Cube(vec3( -14.5 , 0  ,  11.5 ), FRAME),
+	Cube(vec3( -14.5 , 0  ,  12.5 ), FRAME),
+	Cube(vec3( -14.5 , 0  ,  13.5 ), FRAME),
+	// TOP --------------------------------------
+	Cube(vec3( -14.5 , 13 ,  14.5 ), FRAME),
+	Cube(vec3( -13.5 , 13 ,  14.5 ), FRAME),
+	Cube(vec3( -12.5 , 13 ,  14.5 ), FRAME),
+	Cube(vec3( -11.5 , 13 ,  14.5 ), FRAME),
+	Cube(vec3( -10.5 , 13 ,  14.5 ), FRAME),
+	Cube(vec3( -9.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3( -8.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3( -7.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3( -6.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3( -5.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3( -4.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3( -3.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3( -2.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3( -1.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3( -0.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3(  0.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3(  1.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3(  2.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3(  3.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3(  4.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3(  5.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3(  6.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3(  7.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3(  8.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3(  9.5  , 13 ,  14.5 ), FRAME),
+	Cube(vec3(  10.5 , 13 ,  14.5 ), FRAME),
+	Cube(vec3(  11.5 , 13 ,  14.5 ), FRAME),
+	Cube(vec3(  12.5 , 13 ,  14.5 ), FRAME),
+	Cube(vec3(  13.5 , 13 ,  14.5 ), FRAME),
+	Cube(vec3(  14.5 , 13 ,  14.5 ), FRAME),
+	//
+	Cube(vec3( -14.5 , 13 , -14.5 ), FRAME),
+	Cube(vec3( -13.5 , 13 , -14.5 ), FRAME),
+	Cube(vec3( -12.5 , 13 , -14.5 ), FRAME),
+	Cube(vec3( -11.5 , 13 , -14.5 ), FRAME),
+	Cube(vec3( -10.5 , 13 , -14.5 ), FRAME),
+	Cube(vec3( -9.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3( -8.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3( -7.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3( -6.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3( -5.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3( -4.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3( -3.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3( -2.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3( -1.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3( -0.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3(  0.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3(  1.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3(  2.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3(  3.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3(  4.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3(  5.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3(  6.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3(  7.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3(  8.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3(  9.5  , 13 , -14.5 ), FRAME),
+	Cube(vec3(  10.5 , 13 , -14.5 ), FRAME),
+	Cube(vec3(  11.5 , 13 , -14.5 ), FRAME),
+	Cube(vec3(  12.5 , 13 , -14.5 ), FRAME),
+	Cube(vec3(  13.5 , 13 , -14.5 ), FRAME),
+	Cube(vec3(  14.5 , 13 , -14.5 ), FRAME),
+	//
+	Cube(vec3(  14.5 , 13 , -13.5 ), FRAME),
+	Cube(vec3(  14.5 , 13 , -12.5 ), FRAME),
+	Cube(vec3(  14.5 , 13 , -11.5 ), FRAME),
+	Cube(vec3(  14.5 , 13 , -10.5 ), FRAME),
+	Cube(vec3(  14.5 , 13 , -9.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 , -8.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 , -7.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 , -6.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 , -5.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 , -4.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 , -3.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 , -2.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 , -1.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 , -0.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 ,  0.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 ,  1.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 ,  2.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 ,  3.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 ,  4.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 ,  5.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 ,  6.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 ,  7.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 ,  8.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 ,  9.5  ), FRAME),
+	Cube(vec3(  14.5 , 13 ,  10.5 ), FRAME),
+	Cube(vec3(  14.5 , 13 ,  11.5 ), FRAME),
+	Cube(vec3(  14.5 , 13 ,  12.5 ), FRAME),
+	Cube(vec3(  14.5 , 13 ,  13.5 ), FRAME),
+	//
+	Cube(vec3( -14.5 , 13 , -13.5 ), FRAME),
+	Cube(vec3( -14.5 , 13 , -12.5 ), FRAME),
+	Cube(vec3( -14.5 , 13 , -11.5 ), FRAME),
+	Cube(vec3( -14.5 , 13 , -10.5 ), FRAME),
+	Cube(vec3( -14.5 , 13 , -9.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 , -8.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 , -7.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 , -6.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 , -5.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 , -4.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 , -3.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 , -2.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 , -1.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 , -0.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 ,  0.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 ,  1.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 ,  2.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 ,  3.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 ,  4.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 ,  5.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 ,  6.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 ,  7.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 ,  8.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 ,  9.5  ), FRAME),
+	Cube(vec3( -14.5 , 13 ,  10.5 ), FRAME),
+	Cube(vec3( -14.5 , 13 ,  11.5 ), FRAME),
+	Cube(vec3( -14.5 , 13 ,  12.5 ), FRAME),
+	Cube(vec3( -14.5 , 13 ,  13.5 ), FRAME),
+// Bottom --------------------------------
+	Cube(vec3( -13.5 , 0  ,  13.5 ), FRAME),
+	Cube(vec3( -12.5 , 0  ,  13.5 ), FRAME),
+	Cube(vec3( -11.5 , 0  ,  13.5 ), FRAME),
+	Cube(vec3( -10.5 , 0  ,  13.5 ), FRAME),
+	Cube(vec3( -9.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3( -8.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3( -7.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3( -6.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3( -5.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3( -4.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3( -3.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3( -2.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3( -1.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3( -0.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3(  0.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3(  1.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3(  2.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3(  3.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3(  4.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3(  5.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3(  6.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3(  7.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3(  8.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3(  9.5  , 0  ,  13.5 ), FRAME),
+	Cube(vec3(  10.5 , 0  ,  13.5 ), FRAME),
+	Cube(vec3(  11.5 , 0  ,  13.5 ), FRAME),
+	Cube(vec3(  12.5 , 0  ,  13.5 ), FRAME),
+	Cube(vec3(  13.5 , 0  ,  13.5 ), FRAME),
+	//
+	Cube(vec3( -13.5 , 0  , -13.5 ), FRAME),
+	Cube(vec3( -12.5 , 0  , -13.5 ), FRAME),
+	Cube(vec3( -11.5 , 0  , -13.5 ), FRAME),
+	Cube(vec3( -10.5 , 0  , -13.5 ), FRAME),
+	Cube(vec3( -9.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3( -8.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3( -7.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3( -6.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3( -5.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3( -4.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3( -3.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3( -2.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3( -1.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3( -0.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3(  0.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3(  1.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3(  2.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3(  3.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3(  4.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3(  5.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3(  6.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3(  7.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3(  8.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3(  9.5  , 0  , -13.5 ), FRAME),
+	Cube(vec3(  10.5 , 0  , -13.5 ), FRAME),
+	Cube(vec3(  11.5 , 0  , -13.5 ), FRAME),
+	Cube(vec3(  12.5 , 0  , -13.5 ), FRAME),
+	Cube(vec3(  13.5 , 0  , -13.5 ), FRAME),
+	// 
+	Cube(vec3(  13.5 , 0  , -12.5 ), FRAME),
+	Cube(vec3(  13.5 , 0  , -11.5 ), FRAME),
+	Cube(vec3(  13.5 , 0  , -10.5 ), FRAME),
+	Cube(vec3(  13.5 , 0  , -9.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  , -8.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  , -7.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  , -6.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  , -5.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  , -4.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  , -3.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  , -2.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  , -1.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  , -0.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  ,  0.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  ,  1.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  ,  2.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  ,  3.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  ,  4.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  ,  5.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  ,  6.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  ,  7.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  ,  8.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  ,  9.5  ), FRAME),
+	Cube(vec3(  13.5 , 0  ,  10.5 ), FRAME),
+	Cube(vec3(  13.5 , 0  ,  11.5 ), FRAME),
+	Cube(vec3(  13.5 , 0  ,  12.5 ), FRAME),
+	//
+	Cube(vec3( -13.5 , 0  , -12.5 ), FRAME),
+	Cube(vec3( -13.5 , 0  , -11.5 ), FRAME),
+	Cube(vec3( -13.5 , 0  , -10.5 ), FRAME),
+	Cube(vec3( -13.5 , 0  , -9.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  , -8.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  , -7.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  , -6.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  , -5.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  , -4.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  , -3.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  , -2.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  , -1.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  , -0.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  ,  0.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  ,  1.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  ,  2.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  ,  3.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  ,  4.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  ,  5.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  ,  6.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  ,  7.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  ,  8.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  ,  9.5  ), FRAME),
+	Cube(vec3( -13.5 , 0  ,  10.5 ), FRAME),
+	Cube(vec3( -13.5 , 0  ,  11.5 ), FRAME),
+	Cube(vec3( -13.5 , 0  ,  12.5 ), FRAME),
+	// TOP --------------------------------------
+	Cube(vec3( -13.5 , 13 ,  13.5 ), FRAME),
+	Cube(vec3( -12.5 , 13 ,  13.5 ), FRAME),
+	Cube(vec3( -11.5 , 13 ,  13.5 ), FRAME),
+	Cube(vec3( -10.5 , 13 ,  13.5 ), FRAME),
+	Cube(vec3( -9.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3( -8.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3( -7.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3( -6.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3( -5.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3( -4.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3( -3.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3( -2.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3( -1.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3( -0.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3(  0.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3(  1.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3(  2.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3(  3.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3(  4.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3(  5.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3(  6.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3(  7.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3(  8.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3(  9.5  , 13 ,  13.5 ), FRAME),
+	Cube(vec3(  10.5 , 13 ,  13.5 ), FRAME),
+	Cube(vec3(  11.5 , 13 ,  13.5 ), FRAME),
+	Cube(vec3(  12.5 , 13 ,  13.5 ), FRAME),
+	Cube(vec3(  13.5 , 13 ,  13.5 ), FRAME),
+	//
+	Cube(vec3( -13.5 , 13 , -13.5 ), FRAME),
+	Cube(vec3( -12.5 , 13 , -13.5 ), FRAME),
+	Cube(vec3( -11.5 , 13 , -13.5 ), FRAME),
+	Cube(vec3( -10.5 , 13 , -13.5 ), FRAME),
+	Cube(vec3( -9.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3( -8.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3( -7.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3( -6.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3( -5.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3( -4.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3( -3.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3( -2.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3( -1.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3( -0.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3(  0.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3(  1.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3(  2.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3(  3.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3(  4.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3(  5.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3(  6.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3(  7.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3(  8.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3(  9.5  , 13 , -13.5 ), FRAME),
+	Cube(vec3(  10.5 , 13 , -13.5 ), FRAME),
+	Cube(vec3(  11.5 , 13 , -13.5 ), FRAME),
+	Cube(vec3(  12.5 , 13 , -13.5 ), FRAME),
+	Cube(vec3(  13.5 , 13 , -13.5 ), FRAME),
+	//
+	Cube(vec3(  13.5 , 13 , -12.5 ), FRAME),
+	Cube(vec3(  13.5 , 13 , -11.5 ), FRAME),
+	Cube(vec3(  13.5 , 13 , -10.5 ), FRAME),
+	Cube(vec3(  13.5 , 13 , -9.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 , -8.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 , -7.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 , -6.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 , -5.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 , -4.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 , -3.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 , -2.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 , -1.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 , -0.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 ,  0.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 ,  1.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 ,  2.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 ,  3.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 ,  4.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 ,  5.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 ,  6.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 ,  7.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 ,  8.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 ,  9.5  ), FRAME),
+	Cube(vec3(  13.5 , 13 ,  10.5 ), FRAME),
+	Cube(vec3(  13.5 , 13 ,  11.5 ), FRAME),
+	Cube(vec3(  13.5 , 13 ,  12.5 ), FRAME),
+	//
+	Cube(vec3( -13.5 , 13 , -12.5 ), FRAME),
+	Cube(vec3( -13.5 , 13 , -11.5 ), FRAME),
+	Cube(vec3( -13.5 , 13 , -10.5 ), FRAME),
+	Cube(vec3( -13.5 , 13 , -9.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 , -8.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 , -7.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 , -6.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 , -5.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 , -4.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 , -3.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 , -2.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 , -1.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 , -0.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 ,  0.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 ,  1.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 ,  2.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 ,  3.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 ,  4.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 ,  5.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 ,  6.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 ,  7.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 ,  8.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 ,  9.5  ), FRAME),
+	Cube(vec3( -13.5 , 13 ,  10.5 ), FRAME),
+	Cube(vec3( -13.5 , 13 ,  11.5 ), FRAME),
+	Cube(vec3( -13.5 , 13 ,  12.5 ), FRAME),
+	// Pillars
+	Cube(vec3( -14.5 , 1  , -14.5 ), FRAME),
+	Cube(vec3( -14.5 , 2  , -14.5 ), FRAME),
+	Cube(vec3( -14.5 , 3  , -14.5 ), FRAME),
+	Cube(vec3( -14.5 , 4  , -14.5 ), FRAME),
+	Cube(vec3( -14.5 , 5  , -14.5 ), FRAME),
+	Cube(vec3( -14.5 , 6  , -14.5 ), FRAME),
+	Cube(vec3( -14.5 , 7  , -14.5 ), FRAME),
+	Cube(vec3( -14.5 , 8  , -14.5 ), FRAME),
+	Cube(vec3( -14.5 , 9  , -14.5 ), FRAME),
+	Cube(vec3( -14.5 , 10 , -14.5 ), FRAME),
+	Cube(vec3( -14.5 , 11 , -14.5 ), FRAME),
+	Cube(vec3( -14.5 , 12 , -14.5 ), FRAME),
+	//
+	Cube(vec3(  14.5 , 1  , -14.5 ), FRAME),
+	Cube(vec3(  14.5 , 2  , -14.5 ), FRAME),
+	Cube(vec3(  14.5 , 3  , -14.5 ), FRAME),
+	Cube(vec3(  14.5 , 4  , -14.5 ), FRAME),
+	Cube(vec3(  14.5 , 5  , -14.5 ), FRAME),
+	Cube(vec3(  14.5 , 6  , -14.5 ), FRAME),
+	Cube(vec3(  14.5 , 7  , -14.5 ), FRAME),
+	Cube(vec3(  14.5 , 8  , -14.5 ), FRAME),
+	Cube(vec3(  14.5 , 9  , -14.5 ), FRAME),
+	Cube(vec3(  14.5 , 10 , -14.5 ), FRAME),
+	Cube(vec3(  14.5 , 11 , -14.5 ), FRAME),
+	Cube(vec3(  14.5 , 12 , -14.5 ), FRAME),
+	//
+	Cube(vec3(  14.5 , 1  ,  14.5 ), FRAME),
+	Cube(vec3(  14.5 , 2  ,  14.5 ), FRAME),
+	Cube(vec3(  14.5 , 3  ,  14.5 ), FRAME),
+	Cube(vec3(  14.5 , 4  ,  14.5 ), FRAME),
+	Cube(vec3(  14.5 , 5  ,  14.5 ), FRAME),
+	Cube(vec3(  14.5 , 6  ,  14.5 ), FRAME),
+	Cube(vec3(  14.5 , 7  ,  14.5 ), FRAME),
+	Cube(vec3(  14.5 , 8  ,  14.5 ), FRAME),
+	Cube(vec3(  14.5 , 9  ,  14.5 ), FRAME),
+	Cube(vec3(  14.5 , 10 ,  14.5 ), FRAME),
+	Cube(vec3(  14.5 , 11 ,  14.5 ), FRAME),
+	Cube(vec3(  14.5 , 12 ,  14.5 ), FRAME),
+	//
+	Cube(vec3( -14.5 , 1  ,  14.5 ), FRAME),
+	Cube(vec3( -14.5 , 2  ,  14.5 ), FRAME),
+	Cube(vec3( -14.5 , 3  ,  14.5 ), FRAME),
+	Cube(vec3( -14.5 , 4  ,  14.5 ), FRAME),
+	Cube(vec3( -14.5 , 5  ,  14.5 ), FRAME),
+	Cube(vec3( -14.5 , 6  ,  14.5 ), FRAME),
+	Cube(vec3( -14.5 , 7  ,  14.5 ), FRAME),
+	Cube(vec3( -14.5 , 8  ,  14.5 ), FRAME),
+	Cube(vec3( -14.5 , 9  ,  14.5 ), FRAME),
+	Cube(vec3( -14.5 , 10 ,  14.5 ), FRAME),
+	Cube(vec3( -14.5 , 11 ,  14.5 ), FRAME),
+	Cube(vec3( -14.5 , 12 ,  14.5 ), FRAME),
+		// Pillars
+	Cube(vec3( -13.5 , 1  , -13.5 ), FRAME),
+	Cube(vec3( -13.5 , 2  , -13.5 ), FRAME),
+	Cube(vec3( -13.5 , 3  , -13.5 ), FRAME),
+	Cube(vec3( -13.5 , 4  , -13.5 ), FRAME),
+	Cube(vec3( -13.5 , 5  , -13.5 ), FRAME),
+	Cube(vec3( -13.5 , 6  , -13.5 ), FRAME),
+	Cube(vec3( -13.5 , 7  , -13.5 ), FRAME),
+	Cube(vec3( -13.5 , 8  , -13.5 ), FRAME),
+	Cube(vec3( -13.5 , 9  , -13.5 ), FRAME),
+	Cube(vec3( -13.5 , 10 , -13.5 ), FRAME),
+	Cube(vec3( -13.5 , 11 , -13.5 ), FRAME),
+	Cube(vec3( -13.5 , 12 , -13.5 ), FRAME),
+	//
+	Cube(vec3(  13.5 , 1  , -13.5 ), FRAME),
+	Cube(vec3(  13.5 , 2  , -13.5 ), FRAME),
+	Cube(vec3(  13.5 , 3  , -13.5 ), FRAME),
+	Cube(vec3(  13.5 , 4  , -13.5 ), FRAME),
+	Cube(vec3(  13.5 , 5  , -13.5 ), FRAME),
+	Cube(vec3(  13.5 , 6  , -13.5 ), FRAME),
+	Cube(vec3(  13.5 , 7  , -13.5 ), FRAME),
+	Cube(vec3(  13.5 , 8  , -13.5 ), FRAME),
+	Cube(vec3(  13.5 , 9  , -13.5 ), FRAME),
+	Cube(vec3(  13.5 , 10 , -13.5 ), FRAME),
+	Cube(vec3(  13.5 , 11 , -13.5 ), FRAME),
+	Cube(vec3(  13.5 , 12 , -13.5 ), FRAME),
+	//
+	Cube(vec3(  13.5 , 1  ,  13.5 ), FRAME),
+	Cube(vec3(  13.5 , 2  ,  13.5 ), FRAME),
+	Cube(vec3(  13.5 , 3  ,  13.5 ), FRAME),
+	Cube(vec3(  13.5 , 4  ,  13.5 ), FRAME),
+	Cube(vec3(  13.5 , 5  ,  13.5 ), FRAME),
+	Cube(vec3(  13.5 , 6  ,  13.5 ), FRAME),
+	Cube(vec3(  13.5 , 7  ,  13.5 ), FRAME),
+	Cube(vec3(  13.5 , 8  ,  13.5 ), FRAME),
+	Cube(vec3(  13.5 , 9  ,  13.5 ), FRAME),
+	Cube(vec3(  13.5 , 10 ,  13.5 ), FRAME),
+	Cube(vec3(  13.5 , 11 ,  13.5 ), FRAME),
+	Cube(vec3(  13.5 , 12 ,  13.5 ), FRAME),
+	//
+	Cube(vec3( -13.5 , 1  ,  13.5 ), FRAME),
+	Cube(vec3( -13.5 , 2  ,  13.5 ), FRAME),
+	Cube(vec3( -13.5 , 3  ,  13.5 ), FRAME),
+	Cube(vec3( -13.5 , 4  ,  13.5 ), FRAME),
+	Cube(vec3( -13.5 , 5  ,  13.5 ), FRAME),
+	Cube(vec3( -13.5 , 6  ,  13.5 ), FRAME),
+	Cube(vec3( -13.5 , 7  ,  13.5 ), FRAME),
+	Cube(vec3( -13.5 , 8  ,  13.5 ), FRAME),
+	Cube(vec3( -13.5 , 9  ,  13.5 ), FRAME),
+	Cube(vec3( -13.5 , 10 ,  13.5 ), FRAME),
+	Cube(vec3( -13.5 , 11 ,  13.5 ), FRAME),
+	Cube(vec3( -13.5 , 12 ,  13.5 ), FRAME)
 );
 
 // INTERSECTIONS ---------------------------------------------------------------------------------------
 
-bool f_SphereIntersection(in Ray ray, in Sphere sphere, inout float ray_length) {
+bool f_SphereIntersection(in Ray ray, in Sphere sphere, inout float ray_length, out vec2 uv, out vec3 normal) {
 	ray.Ray_Origin = ray.Ray_Origin - sphere.Position;
-
 	float b = dot(ray.Ray_Origin, ray.Ray_Direction);
 	float delta = b * b - dot(ray.Ray_Origin, ray.Ray_Origin) + sphere.Diameter * sphere.Diameter;
 	
-	if (delta < 0) {
+	if (delta < 0)
 		return false;
-	}
+
 	float sqdelta = sqrt(delta);
 
 	if (-b - sqdelta > EPSILON) {
@@ -205,85 +769,75 @@ bool f_SphereIntersection(in Ray ray, in Sphere sphere, inout float ray_length) 
 		ray_length = -b + sqdelta;
 		return true;
 	}
+
 	return false;
 }
-/*
-bool f_BVHIntersection(in Ray ray, in BVH bvh, inout float ray_length) {
-	ray.Ray_Origin = ray.Ray_Origin - bvh.Position;
 
-	if (any(abs(ray.Ray_Origin) > boxExtent && rayOrigin * direction >= 0.0)) {
+bool f_BOXIntersection(in Ray ray, in BOX box, inout float ray_length, out vec2 uv, out vec3 normal) {
+	mat4 txi = mat4(1.0);
+	txi[3] = vec4(box.Position, 1.0);
+	mat4 txx = inverse(txi);
+
+	vec3 rdd = (txx*vec4(ray.Ray_Direction,0.0)).xyz;
+	vec3 roo = (txx*vec4(ray.Ray_Origin,1.0)).xyz;
+
+	vec3 m = 1.0 / rdd;
+	vec3 n = m*roo;
+	vec3 k = abs(m) * box.Size;
+	
+	vec3 t1 = -n - k;
+	vec3 t2 = -n + k;
+
+	float tNear = max( max( t1.x, t1.y ), t1.z );
+	float tFar  = min( min( t2.x, t2.y ), t2.z );
+	if ( tNear > tFar || tFar < 0.0)
 		return false;
-	}
 
-	// Perform AABB-line test
-	float3 WxD = cross(direction, rayOrigin);
-	float3 absWdU = abs(direction);
-	if (any(WxD > float3(dot(boxExtent.yz, absWdU.zy),
-						dot(boxExtent.xz, absWdU.zx),
-						dot(boxExtent.xy, absWdU.yx))))
-	{
-		return false;
-	}
+	vec4 res = vec4(0);
+	if (tNear > 0.0)
+		res = vec4( tNear, step(vec3(tNear),t1));
+	else
+		res = vec4(tFar, step(t2,vec3(tFar)));
 
+	normal = (txi * vec4(-sign(rdd) * res.yzw,0.0)).xyz;
+	ray_length = tNear;
 	return true;
 }
-*/
-bool f_QuadIntersection(in Ray ray, in Quad quad, inout float ray_length, out vec2 uv) {
-	vec3 a = quad.v1 - quad.v0;
-	vec3 b = quad.v3 - quad.v0;
-	vec3 c = quad.v2 - quad.v0;
-	vec3 p = ray.Ray_Origin - quad.v0;
 
-	vec3 nor = cross(a,b);
-	float t = -dot(p,nor)/dot(ray.Ray_Direction,nor);
-	if( t < 0.0 ) return false;
-	vec3 pos = p + t*ray.Ray_Direction;
+bool f_CubeIntersection(in Ray ray, in Cube cube, inout float ray_length, out vec2 uv, out vec3 normal) {
+	mat4 txi = mat4(1.0);
+	txi[3] = vec4(cube.Position, 1.0);
+	mat4 txx = inverse(txi);
 
-	vec3 mor = abs(nor);
-	int id = (mor.x>mor.y && mor.x>mor.z ) ? 0 : (mor.y>mor.z) ? 1 : 2;
+	vec3 rdd = (txx*vec4(ray.Ray_Direction,0.0)).xyz;
+	vec3 roo = (txx*vec4(ray.Ray_Origin,1.0)).xyz;
 
-	int idu = Quad_Face[id  ];
-	int idv = Quad_Face[id+1];
+	vec3 m = 1.0 / rdd;
+	vec3 n = m*roo;
+	vec3 k = abs(m) * vec3(0.5);
+	
+	vec3 t1 = -n - k;
+	vec3 t2 = -n + k;
 
-	vec2 kp = vec2( pos[idu], pos[idv] );
-	vec2 ka = vec2( a[idu], a[idv] );
-	vec2 kb = vec2( b[idu], b[idv] );
-	vec2 kc = vec2( c[idu], c[idv] );
-
-	vec2 kg = kc-kb-ka;
-
-	float k0 = cross2d( kp, kb );
-	float k2 = cross2d( kc-kb, ka );
-	float k1 = cross2d( kp, kg ) - nor[id];
-
-	float u, v;
-	if( abs(k2) < 0.00001) {
-		v = -k0/k1;
-		u = cross2d( kp, ka )/k1;
-	}
-	else {
-		float w = k1*k1 - 4.0*k0*k2;
-		if( w<0.0 ) return false;
-		w = sqrt( w );
-
-		float ik2 = 1.0/(2.0*k2);
-		v = (-k1 - w)*ik2;
-		if( v<0.0 || v>1.0 ) v = (-k1 + w)*ik2;
-		u = (kp.x - ka.x*v)/(kb.x + kg.x*v);
-	}
-	if( u<0.0 || u>1.0 || v<0.0 || v>1.0) {
+	float tNear = max( max( t1.x, t1.y ), t1.z );
+	float tFar  = min( min( t2.x, t2.y ), t2.z );
+	if ( tNear > tFar || tFar < 0.0)
 		return false;
-	}
-	else {
-		ray_length = t;
-		uv = vec2(v,1-u);
-		return true;
-	}
+
+	vec4 res = vec4(0);
+	if (tNear > 0.0)
+		res = vec4( tNear, step(vec3(tNear),t1));
+	else
+		res = vec4(tFar, step(t2,vec3(tFar)));
+
+	normal = (txi * vec4(-sign(rdd) * res.yzw,0.0)).xyz;
+	ray_length = tNear;
+	return true;
 }
 
 // FUNCTIONS ---------------------------------------------------------------------------------------
 
-vec3 f_Hemisphere() {
+vec3 f_HemiCube() {
 	vec2 p = rand2();
 	p = vec2(2. * PI * p.x, sqrt(p.y));
 	return normalize(vec3(sin(p.x) * p.y, cos(p.x) * p.y, sqrt(1. - p.y * p.y)));
@@ -307,11 +861,13 @@ vec3 f_ConeRoughness(vec3 dir, float theta) {
 Hit f_SceneIntersection(const in Ray ray) {
 	Hit hit_data;
 	hit_data.Ray_Length = MAX_DIST;
+	vec3 normal = vec3(0);
 	vec2 uv = vec2(0);
+	bool inside = false;
 
 	for (int i = 0; i < SPHERE_COUNT; i++) {
 		float resultRayLength;
-		if (f_SphereIntersection(ray, Scene_Spheres[i], resultRayLength)) {
+		if (f_SphereIntersection(ray, Scene_Spheres[i], resultRayLength, uv, normal)) {
 			if(resultRayLength < hit_data.Ray_Length && resultRayLength > 0.001) {
 				hit_data.Ray_Length = resultRayLength;
 				hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * resultRayLength;
@@ -323,17 +879,44 @@ Hit f_SceneIntersection(const in Ray ray) {
 			}
 		}
 	}
-	for (int i = 0; i < QUAD_COUNT; i++) {
+	for (int i = 0; i < LIGHTS_COUNT; i++) {
 		float resultRayLength;
-		if (f_QuadIntersection(ray, Scene_Quads[i], resultRayLength, uv)) {
-			if(resultRayLength < hit_data.Ray_Length && resultRayLength > 0.001) {
+		if (f_CubeIntersection(ray, Scene_Lights[i], resultRayLength, uv, normal)) {
+			if(resultRayLength < hit_data.Ray_Length && resultRayLength > EPSILON) {
 				hit_data.Ray_Length = resultRayLength;
-				hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * resultRayLength;
-				vec3 nor = normalize(cross(Scene_Quads[i].v2 - Scene_Quads[i].v1, Scene_Quads[i].v3 - Scene_Quads[i].v1));
-				hit_data.Hit_New_Dir = faceforward( nor, ray.Ray_Direction, nor );
-				hit_data.Hit_Mat = Scene_Quads[i].Mat;
-				hit_data.Hit_UV = uv;
 				hit_data.Hit_Obj = i + SPHERE_COUNT;
+				hit_data.Hit_Mat = Scene_Lights[i].Mat;
+				hit_data.Hit_UV = uv;
+				hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * hit_data.Ray_Length;
+				hit_data.Hit_New_Dir = normal;
+				hit_data.Ray_Inside = false;
+			}
+		}
+	}
+	for (int i = 0; i < GLASS_COUNT; i++) {
+		float resultRayLength;
+		if (f_BOXIntersection(ray, Scene_Glass[i], resultRayLength, uv, normal)) {
+			if(resultRayLength < hit_data.Ray_Length && resultRayLength > EPSILON) {
+				hit_data.Ray_Length = resultRayLength;
+				hit_data.Hit_Obj = i + SPHERE_COUNT + LIGHTS_COUNT;
+				hit_data.Hit_Mat = Scene_Glass[i].Mat;
+				hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * hit_data.Ray_Length;
+				hit_data.Hit_New_Dir = normal;
+				hit_data.Ray_Inside = false;
+			}
+		}
+	}
+	for (int i = 0; i < FRAME_COUNT; i++) {
+		float resultRayLength;
+		if (f_CubeIntersection(ray, Scene_Frame[i], resultRayLength, uv, normal)) {
+			if(resultRayLength < hit_data.Ray_Length && resultRayLength > EPSILON) {
+				hit_data.Ray_Length = resultRayLength;
+				hit_data.Hit_Obj = i + SPHERE_COUNT + LIGHTS_COUNT + GLASS_COUNT;
+				hit_data.Hit_Mat = Scene_Frame[i].Mat;
+				hit_data.Hit_UV = uv;
+				hit_data.Hit_Pos = ray.Ray_Origin + ray.Ray_Direction * hit_data.Ray_Length;
+				hit_data.Hit_New_Dir = normal;
+				hit_data.Ray_Inside = false;
 			}
 		}
 	}
@@ -351,20 +934,6 @@ vec3 f_EnvironmentHDR(in Ray r) {
 	return texture(iHdri, vec2(u,v)).rgb * HDRI_STRENGTH;
 }
 
-vec3 f_AmbientOcclusion(in Ray r) {
-	float distPercent;
-	for (int b = 0; b < 2; b++){
-		Hit hit_data = f_SceneIntersection(r);
-		if (hit_data.Ray_Length >= MAX_DIST) {
-			return vec3(0.0); // MISS;
-		}
-		r.Ray_Direction = f_ConeRoughness(hit_data.Hit_New_Dir, 10.0);
-		r.Ray_Origin = hit_data.Hit_Pos + r.Ray_Direction * EPSILON;
-		distPercent = min(hit_data.Ray_Length / AO_LENGTH, 1.0);
-	}
-	return vec3(distPercent, distPercent, distPercent);
-}
-
 vec3 f_Radiance(in Ray r){
 	vec3 rad = vec3(0);
 	vec3 brdf = vec3(1);
@@ -375,56 +944,41 @@ vec3 f_Radiance(in Ray r){
 		if (hit_data.Ray_Length >= MAX_DIST) {
 			return rad + brdf * f_EnvironmentHDR(r); // MISS;
 		}
-		if (hit_data.Hit_Mat.Type == DIFFUSE) {
+		if (hit_data.Hit_Mat == FRAME) {
 			vec3 tangent = normalize(cross(r.Ray_Direction, hit_data.Hit_New_Dir));
 			vec3 bitangent = normalize(cross(hit_data.Hit_New_Dir, tangent));
-			vec3 normal = f_Hemisphere();
-			r.Ray_Direction = normalize(mix(reflect(r.Ray_Direction, hit_data.Hit_New_Dir), normalize(tangent * normal.x + bitangent * normal.y + hit_data.Hit_New_Dir * normal.z), hit_data.Hit_Mat.Roughness));
-			brdf *= hit_data.Hit_Mat.Color;
+			vec3 normal = f_HemiCube();
+			float roughness = 0.4;
+			r.Ray_Direction = reflect(r.Ray_Direction, hit_data.Hit_New_Dir);
+			brdf *= vec3(0.5);//texture(iTextures, hit_data.Hit_UV).rgb;
 		}
-		else if (hit_data.Hit_Mat.Type == TEXTURED) {
-			vec3 tangent = normalize(cross(r.Ray_Direction, hit_data.Hit_New_Dir));
-			vec3 bitangent = normalize(cross(hit_data.Hit_New_Dir, tangent));
-			vec3 normal = f_Hemisphere();
-			r.Ray_Direction = normalize(mix(reflect(r.Ray_Direction, hit_data.Hit_New_Dir), normalize(tangent * normal.x + bitangent * normal.y + hit_data.Hit_New_Dir * normal.z), hit_data.Hit_Mat.Roughness));
-			return rad + brdf * texture(iAlbedo, hit_data.Hit_UV).rgb;
-		}
-		else if (hit_data.Hit_Mat.Type == GLASS) {
+		else if (hit_data.Hit_Mat == GLASS) {
 			float cosi = abs(dot(hit_data.Hit_New_Dir, r.Ray_Direction));
 			float sini = sqrt(1. - cosi * cosi);
-			float iort = hit_data.Hit_Mat.IOR;
+			float iort = 1.35;
 			float iori = 1.0;
-			if (hit_data.Ray_Inside) {
+			if (hit_data.Ray_Inside){
 				iori = iort;
 				iort = 1.0;
 			}
 			float sint = snell(sini, iori, iort);
 			float cost = sqrt(1.0 - sint * sint);
 			float frsn = fresnel(iori, iort, cosi, cost);
-
 			if (rand1() > frsn){
 				vec3 bitangent = normalize(r.Ray_Direction - dot(hit_data.Hit_New_Dir, r.Ray_Direction) * hit_data.Hit_New_Dir);
 				r.Ray_Direction = normalize(bitangent * sint - cost * hit_data.Hit_New_Dir);
-				brdf *= hit_data.Hit_Mat.Color;
+				brdf *= vec3(1.0);
 			}
 			else {
 				r.Ray_Direction = reflect(r.Ray_Direction, hit_data.Hit_New_Dir);
 			}
 		}
-		else if (hit_data.Hit_Mat.Type == EMISSIVE) {
-			return rad + brdf * hit_data.Hit_Mat.Color * hit_data.Hit_Mat.Emissive_Strength;
+		else if (hit_data.Hit_Mat == EMISSIVE) {
+			return rad + brdf * vec3(50.0);
 		}
 		r.Ray_Origin = hit_data.Hit_Pos + r.Ray_Direction * EPSILON;
 	}
 	return rad;
-}
-
-vec3 f_ZDepth(in Ray r) {
-	Hit hit_data = f_SceneIntersection(r);
-	if (hit_data.Ray_Length >= MAX_DIST) {
-		return vec3(0.0); // MISS;
-	}
-	return vec3(1 - min(hit_data.Ray_Length / 50.0, 0.9));
 }
 
 Ray f_CameraRay(vec2 uv) {
@@ -441,35 +995,15 @@ void main() {
 		const vec2 uv = (gl_FragCoord.xy - 1.0 - iResolution.xy /2.0) / max(iResolution.x, iResolution.y);
 		const vec2 pixel_size = 1/ iResolution.xy;
 
-		// -------------------------- Ambient Occlusion
-		if (iRenderMode == 0) {
-			vec3 col;
-			for (int x = 0; x < SPP; x++) {
-				for (int y = 0; y < SPP; y++) {
-					vec2 subpixelUV = uv - (vec2(0.5) * pixel_size) + (vec2(float(x) / float(SPP), float(y) / float(SPP)) * pixel_size);
-					col += f_AmbientOcclusion(f_CameraRay(subpixelUV));
-				}
+		vec3 col;
+		for (int x = 0; x < SPP; x++) {
+			for (int y = 0; y < SPP; y++) {
+				vec2 subpixelUV = uv - (vec2(0.5) * pixel_size) + (vec2(float(x) / float(SPP), float(y) / float(SPP)) * pixel_size);
+				col += f_Radiance(f_CameraRay(subpixelUV));
 			}
-			col /= float(SPP * SPP);
-			fragColor = vec4(col , 1);
 		}
-		// -------------------------- PathTracer
-		else if (iRenderMode == 1) {
-			vec3 col;
-			for (int x = 0; x < SPP; x++) {
-				for (int y = 0; y < SPP; y++) {
-					vec2 subpixelUV = uv - (vec2(0.5) * pixel_size) + (vec2(float(x) / float(SPP), float(y) / float(SPP)) * pixel_size);
-					col += f_Radiance(f_CameraRay(subpixelUV));
-				}
-			}
-
-			col /= float(SPP * SPP);
-			fragColor = vec4(col, 1);
-		}
-		// -------------------------- Z-Depth
-		else if (iRenderMode == 2) {
-			fragColor = vec4(f_ZDepth(f_CameraRay(uv)) , 1);
-		}
+		col /= float(SPP * SPP);
+		fragColor = vec4(col, 1);
 	}
 	else {
 		fragColor = texture(iLastFrame, fragTexCoord);

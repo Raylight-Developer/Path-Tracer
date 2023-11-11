@@ -231,8 +231,8 @@ void GLSL_Renderer::f_init() {
 	Texture background_tex = Texture();
 	background_tex.f_init("D:/UVG/Path-Tracer/resources/Background.png");
 
-	Texture object_tex = Texture();
-	object_tex.f_init("D:/UVG/Path-Tracer/resources/Texture.png");
+	Texture blocks_tex = Texture();
+	blocks_tex.f_init("D:/UVG/Path-Tracer/resources/Diorama.png");
 
 	glClearColor(0, 0, 0, 1);
 	while (!glfwWindowShouldClose(window)) {
@@ -292,8 +292,8 @@ void GLSL_Renderer::f_init() {
 		glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iCameraChange"),      iCameraChange);
 		accumulation_tex.f_bind(GL_TEXTURE1);
 		glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iLastFrame"), 1);
-		object_tex.f_bind(GL_TEXTURE3);
-		glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iAlbedo"), 3);
+		blocks_tex.f_bind(GL_TEXTURE3);
+		glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iTextures"), 3);
 		background_tex.f_bind(GL_TEXTURE2);
 		glUniform1i (glGetUniformLocation(raw_frame_program.ID, "iHdri"), 2);
 
