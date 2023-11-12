@@ -229,10 +229,10 @@ void GLSL_Renderer::f_init() {
 	accumulation_fbo.f_unbind();
 
 	Texture background_tex = Texture();
-	background_tex.f_init("D:/UVG/Path-Tracer/resources/Background.png");
+	background_tex.f_init("D:/UVG/Path-Tracer/resources/Background.jpg");
 
 	Texture blocks_tex = Texture();
-	blocks_tex.f_init("D:/UVG/Path-Tracer/resources/Diorama.png");
+	blocks_tex.f_init("D:/UVG/Path-Tracer/resources/Blocks.png");
 
 	glClearColor(0, 0, 0, 1);
 	while (!glfwWindowShouldClose(window)) {
@@ -247,12 +247,12 @@ void GLSL_Renderer::f_init() {
 			iFrame = 0;
 		}
 		if (keys[GLFW_KEY_E] || keys[GLFW_KEY_SPACE]) {
-			camera.f_move(0, 1, 0, camera_move_sensitivity);
+			camera.position += dvec3(0.0, 1.0, 0.0) * camera_move_sensitivity;
 			iCameraChange = true;
 			iFrame = 0;
 		}
 		if (keys[GLFW_KEY_Q] || keys[GLFW_KEY_LEFT_CONTROL]) {
-			camera.f_move(0, -1, 0, camera_move_sensitivity);
+			camera.position -= dvec3(0.0, 1.0, 0.0) * camera_move_sensitivity;
 			iCameraChange = true;
 			iFrame = 0;
 		}
