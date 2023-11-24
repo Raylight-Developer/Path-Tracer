@@ -1,8 +1,13 @@
 #pragma once
 
+#include "Include.h"
 #include "Math/Ops.h"
+#include "Math/Lace.h"
+
 #include "Rendering/Material.h"
+
 #include "Object/Camera.h"
+#include "Object/Sphere.h"
 
 struct Image {
 	uint16_t width;
@@ -17,5 +22,9 @@ struct Image {
 
 struct File {
 	Camera render_camera;
+	vector<Sphere> file_spheres;
+
+	vec1 render_max_ray_length;
+
 	File();
 };

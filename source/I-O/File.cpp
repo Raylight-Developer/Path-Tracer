@@ -5,6 +5,10 @@
 
 File::File() {
 	render_camera = Camera();
+
+	file_spheres = vector<Sphere>(1, Sphere());
+
+	render_max_ray_length = 10000.0;
 }
 
 Image::Image() {

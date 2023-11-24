@@ -19,46 +19,48 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="external\stb_image.h" />
-    <ClInclude Include="include\I-O\File.h" />
-    <ClInclude Include="include\Include.h" />
-    <ClInclude Include="include\Math\Lace.h" />
-    <ClInclude Include="include\Math\Ops.h" />
-    <ClInclude Include="include\Object\Camera.h" />
-    <ClInclude Include="include\Rendering\Material.h" />
-    <ClInclude Include="include\Rendering\Opengl\EBO.h" />
-    <ClInclude Include="include\Rendering\Opengl\FBO.h" />
-    <ClInclude Include="include\Rendering\Opengl\FBT.h" />
-    <ClInclude Include="include\Rendering\Opengl\GLSL_Renderer.h" />
-    <ClInclude Include="include\Rendering\Opengl\Shader_Program.h" />
-    <ClInclude Include="include\Rendering\Opengl\Texture.h" />
-    <ClInclude Include="include\Rendering\Opengl\VAO.h" />
-    <ClInclude Include="include\Rendering\Opengl\VBO.h" />
-    <ClInclude Include="include\Object\Sphere.h" />
-    <ClInclude Include="include\Rendering\Kerzenlicht_Renderer.h" />
-    <ClInclude Include="include\Object\Mesh.h" />
-    <ClInclude Include="include\Object\Scene_Object.h" />
+    <ClInclude Include="External\stb_image.h" />
+    <ClInclude Include="Include\I-O\File.h" />
+    <ClInclude Include="Include\Include.h" />
+    <ClInclude Include="Include\Math\Lace.h" />
+    <ClInclude Include="Include\Math\Ops.h" />
+    <ClInclude Include="Include\Object\Camera.h" />
+    <ClInclude Include="Include\Rendering\Material.h" />
+    <ClInclude Include="Include\Rendering\Opengl\EBO.h" />
+    <ClInclude Include="Include\Rendering\Opengl\FBO.h" />
+    <ClInclude Include="Include\Rendering\Opengl\FBT.h" />
+    <ClInclude Include="Include\Rendering\GLSL_Renderer.h" />
+    <ClInclude Include="Include\Rendering\Opengl\Shader_Program.h" />
+    <ClInclude Include="Include\Rendering\Opengl\Texture.h" />
+    <ClInclude Include="Include\Rendering\Opengl\VAO.h" />
+    <ClInclude Include="Include\Rendering\Opengl\VBO.h" />
+    <ClInclude Include="Include\Object\Sphere.h" />
+    <ClInclude Include="Include\Rendering\Kerzenlicht_Renderer.h" />
+    <ClInclude Include="Include\Object\Mesh.h" />
+    <ClInclude Include="Include\Object\Scene_Object.h" />
+    <ClInclude Include="Include\Rendering\Render_Kernel.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="source\Object\Scene_Object.cpp" />
-    <ClCompile Include="source\Object\Mesh.cpp" />
-    <ClCompile Include="source\Rendering\Kerzenlicht_Renderer.cpp" />
+    <ClCompile Include="Source\Rendering\Render_Kernel.cpp" />
+    <ClCompile Include="Source\Object\Scene_Object.cpp" />
+    <ClCompile Include="Source\Object\Mesh.cpp" />
+    <ClCompile Include="Source\Rendering\Kerzenlicht_Renderer.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="source\Rendering\Opengl\glad.c" />
-    <ClCompile Include="source\I-O\File.cpp" />
-    <ClCompile Include="source\Math\Lace.cpp" />
-    <ClCompile Include="source\Math\Ops.cpp" />
-    <ClCompile Include="source\Object\Camera.cpp" />
-    <ClCompile Include="source\Rendering\Material.cpp" />
-    <ClCompile Include="source\Rendering\Opengl\EBO.cpp" />
-    <ClCompile Include="source\Rendering\Opengl\FBO.cpp" />
-    <ClCompile Include="source\Rendering\Opengl\FBT.cpp" />
-    <ClCompile Include="source\Rendering\Opengl\GLSL_Renderer.cpp" />
-    <ClCompile Include="source\Rendering\Opengl\Shader_Program.cpp" />
-    <ClCompile Include="source\Rendering\Opengl\Texture.cpp" />
-    <ClCompile Include="source\Rendering\Opengl\VAO.cpp" />
-    <ClCompile Include="source\Rendering\Opengl\VBO.cpp" />
-    <ClCompile Include="source\Object\Sphere.cpp" />
+    <ClCompile Include="Source\Rendering\Opengl\glad.c" />
+    <ClCompile Include="Source\I-O\File.cpp" />
+    <ClCompile Include="Source\Math\Lace.cpp" />
+    <ClCompile Include="Source\Math\Ops.cpp" />
+    <ClCompile Include="Source\Object\Camera.cpp" />
+    <ClCompile Include="Source\Rendering\Material.cpp" />
+    <ClCompile Include="Source\Rendering\Opengl\EBO.cpp" />
+    <ClCompile Include="Source\Rendering\Opengl\FBO.cpp" />
+    <ClCompile Include="Source\Rendering\Opengl\FBT.cpp" />
+    <ClCompile Include="Source\Rendering\GLSL_Renderer.cpp" />
+    <ClCompile Include="Source\Rendering\Opengl\Shader_Program.cpp" />
+    <ClCompile Include="Source\Rendering\Opengl\Texture.cpp" />
+    <ClCompile Include="Source\Rendering\Opengl\VAO.cpp" />
+    <ClCompile Include="Source\Rendering\Opengl\VBO.cpp" />
+    <ClCompile Include="Source\Object\Sphere.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
@@ -114,11 +116,11 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(SolutionDir)\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)\Include;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(SolutionDir)\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)\Include;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">
@@ -126,10 +128,10 @@
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <VcpkgConfiguration>Release</VcpkgConfiguration>
-    <VcpkgInstalledDir>.\external</VcpkgInstalledDir>
+    <VcpkgInstalledDir>.\External</VcpkgInstalledDir>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <VcpkgInstalledDir>.\external</VcpkgInstalledDir>
+    <VcpkgInstalledDir>.\External</VcpkgInstalledDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -165,7 +167,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>D:\UVG\Path-Tracer\external;$(SolutionDir)\external\glad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\UVG\Path-Tracer\External;$(SolutionDir)\External\glad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <OpenMPSupport>true</OpenMPSupport>
@@ -185,7 +187,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>D:\UVG\Path-Tracer\external;$(SolutionDir)\external\glad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\UVG\Path-Tracer\External;$(SolutionDir)\External\glad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <OpenMPSupport>true</OpenMPSupport>

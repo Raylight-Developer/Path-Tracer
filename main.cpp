@@ -1,7 +1,7 @@
 #define HIGHPRECISION false
 
 #include "Include.h"
-#include "Rendering/Opengl/GLSL_Renderer.h"
+#include "Rendering/GLSL_Renderer.h"
 
 //int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
 int main() {
