@@ -13,43 +13,23 @@
 #include "Texture.h"
 #include "Shader_Program.h"
 
-struct Render_Mode {
-	enum Enum {
-		AMBIENT_OCCLUSION,
-		PATHTRACED,
-		ZBUFFER
-	};
-};
-
-inline Render_Mode::Enum switchRenderMode(Render_Mode::Enum i_current) {
-	int currentIntValue = static_cast<int>(i_current) + 1;
-	if (currentIntValue > 2) return static_cast<Render_Mode::Enum>(0);
-	return static_cast<Render_Mode::Enum>(currentIntValue);
-}
-
 struct GLSL_Renderer {
-	vector<GLfloat> vertices;
-	vector<GLuint> faces;
-
+	uvec2 display_resolution;
 	Kerzenlicht_Renderer renderer;
-
-	double iTime;
-	size_t iFrame;
-	bool   iBidirectional;
-	bool   iCameraChange;
 
 	Camera camera;
 
-	Render_Mode::Enum render_mode;
 	double camera_move_sensitivity;
 	double camera_view_sensitivity;
 	vector<bool> keys;
 	dvec2  last_mouse;
 
+	double run_time;
+	double frame_time;
+	double window_time;
+
 	clock_t last_time;
 	clock_t current_time;
-	double window_time;
-	double frame_time;
 
 	VAO main_vao;
 	VBO main_vbo;

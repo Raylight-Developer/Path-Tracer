@@ -2,7 +2,7 @@
 
 void Texture::f_init(const string& i_image_path) {
 	Image texture = Image();
-	if (texture.f_load(i_image_path)) {
+	if (texture.f_load(i_image_path, true)) {
 		glGenTextures(1, &ID);
 		glBindTexture(GL_TEXTURE_2D, ID);
 		glTexImage2D(GL_TEXTURE_2D, 0, texture.channel_fromat, texture.width, texture.height, 0, texture.channel_fromat, texture.data_type, texture.data);

@@ -1,4 +1,4 @@
-#include "Math/Math.h"
+#include "Math/Ops.h"
 
 float fastInvSqrt(const float& number) {
 	long i;

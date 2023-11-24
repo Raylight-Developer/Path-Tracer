@@ -10,7 +10,7 @@ File::File() {
 Image::Image() {
 }
 
-bool Image::f_load(const string& i_file_path) {
+bool Image::f_load(const string& i_file_path, const bool& i_flip) {
 	int t_width, t_height, t_nrChannels;
 	data = stbi_load(i_file_path.c_str(), &t_width, &t_height, &t_nrChannels, 0);
 	if (data) {
@@ -23,14 +23,15 @@ bool Image::f_load(const string& i_file_path) {
 		width = t_width;
 		height = t_height;
 		data_type = GL_UNSIGNED_BYTE;
-
-		for (int y = 0; y < height / 2; ++y) {
-			for (int x = 0; x < width * t_nrChannels; ++x) {
-				const int top_index = y * width * t_nrChannels + x;
-				const int bottom_index = (height - 1 - y) * width * t_nrChannels + x;
-				unsigned char temp = data[top_index];
-				data[top_index] = data[bottom_index];
-				data[bottom_index] = temp;
+		if (i_flip) {
+			for (int y = 0; y < height / 2; ++y) {
+				for (int x = 0; x < width * t_nrChannels; ++x) {
+					const int top_index = y * width * t_nrChannels + x;
+					const int bottom_index = (height - 1 - y) * width * t_nrChannels + x;
+					unsigned char temp = data[top_index];
+					data[top_index] = data[bottom_index];
+					data[bottom_index] = temp;
+				}
 			}
 		}
 		return true;

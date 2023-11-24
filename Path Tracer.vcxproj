@@ -23,7 +23,7 @@
     <ClInclude Include="include\I-O\File.h" />
     <ClInclude Include="include\Include.h" />
     <ClInclude Include="include\Math\Lace.h" />
-    <ClInclude Include="include\Math\Math.h" />
+    <ClInclude Include="include\Math\Ops.h" />
     <ClInclude Include="include\Object\Camera.h" />
     <ClInclude Include="include\Rendering\Material.h" />
     <ClInclude Include="include\Rendering\Opengl\EBO.h" />
@@ -47,7 +47,7 @@
     <ClCompile Include="source\Rendering\Opengl\glad.c" />
     <ClCompile Include="source\I-O\File.cpp" />
     <ClCompile Include="source\Math\Lace.cpp" />
-    <ClCompile Include="source\Math\Math.cpp" />
+    <ClCompile Include="source\Math\Ops.cpp" />
     <ClCompile Include="source\Object\Camera.cpp" />
     <ClCompile Include="source\Rendering\Material.cpp" />
     <ClCompile Include="source\Rendering\Opengl\EBO.cpp" />
