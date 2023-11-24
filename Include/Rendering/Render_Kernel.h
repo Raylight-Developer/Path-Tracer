@@ -26,9 +26,10 @@ struct Intersection {
 	Material* material;
 };
 
+// Ray
 Ray f_cameraRay(const Camera& i_camera, const uint32& i_u, const uint32& i_v);
 Ray f_cameraRay(const Camera& i_camera, const vec2& i_uv);
 
+// Intersection
 bool f_sphereIntersection(const Ray& ray, const Sphere& sphere, vec1& ray_length);
-
 Intersection f_sceneIntersection(const File& i_file, const Ray& i_ray);

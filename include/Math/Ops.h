@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Include.h"
 #include "Lace.h"
 
 string strSpaced(const vector<size_t>& P_Vec);
@@ -16,3 +17,18 @@ double clamp(const double& P_Value, const double& P_Min, const double& P_Max);
 vector<string> splitString(const string& input);
 vector<string> splitStringToLines(const string& P_Lines);
 vector<string> splitString(const string& input, const string& delimiter);
+
+
+//io
+vector<char> readFile(const string& i_file_path);
+
+// glm
+mat3 f_eulerToRotationMatrix(const vec3& i_value);
+
+// math
+float random_float();
+float random_float(float min, float max);
+
+// string-tokens
+vector<string> f_splitString(const string& i_value, const string& i_delimiter = " ");
+string f_mergeToString(const vector<string>& i_value, const size_t& i_start_item = 0, const string& i_separator = "");

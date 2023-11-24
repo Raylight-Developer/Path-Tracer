@@ -112,3 +112,84 @@ double mix(const double& P_inputA, const double& P_inputB, const double& P_facto
 double cross(const dvec2& i_a, const dvec2& i_b) {
 	return i_a.x * i_b.y - i_a.y * i_b.x;
 }
+
+
+vector<char> readFile(const string& i_file_path) {
+	ifstream file(i_file_path, ios::ate | ios::binary);
+
+	if (!file.is_open()) {
+		Lace err;
+		throw runtime_error((err << "!!ERROR!! Failed To Open File: " << i_file_path).str());
+	}
+
+	size_t fileSize = (size_t)file.tellg();
+	vector<char> buffer(fileSize);
+
+	file.seekg(0);
+	file.read(buffer.data(), fileSize);
+
+	file.close();
+
+	return buffer;
+}
+
+mat3 f_eulerToRotationMatrix(const vec3& i_value) {
+	const vec1 pi = i_value.x * DEG_RAD;
+	const vec1 ya = i_value.y * DEG_RAD;
+	const vec1 ro = i_value.z * DEG_RAD;
+
+	const mat4 rollMat = mat4(
+		cos(ro), -sin(ro), 0, 0,
+		sin(ro), cos(ro), 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1
+	);
+
+	const mat4 yawMat = mat4(
+		cos(ya), 0, sin(ya), 0,
+		0, 1, 0, 0,
+		-sin(ya), 0, cos(ya), 0,
+		0, 0, 0, 1
+	);
+
+	const mat4 pitchMat = mat4(
+		1, 0, 0, 0,
+		0, cos(pi), -sin(pi), 0,
+		0, sin(pi), cos(pi), 0,
+		0, 0, 0, 1
+	);
+
+	return mat3(rollMat * yawMat * pitchMat);
+}
+
+float random_float() {
+	static std::uniform_real_distribution<float> distribution(0.0f, 1.0f);
+	static std::mt19937 generator;
+	return distribution(generator);
+}
+
+float random_float(float min, float max) {
+	return min + random_float() * (max - min);
+}
+
+vector<string> f_splitString(const string& i_value, const string& i_delimiter) {
+	vector<string> tokens;
+	string::size_type start = 0;
+	string::size_type end = i_value.find(i_delimiter);
+	while (end != string::npos) {
+		tokens.push_back(i_value.substr(start, end - start));
+		start = end + 1;
+		end = i_value.find(i_delimiter, start);
+	}
+	tokens.push_back(i_value.substr(start));
+	return tokens;
+}
+
+string f_mergeToString(const vector<string>& i_value, const size_t& i_start_item, const string& i_separator) {
+	return accumulate(
+		i_value.begin() + i_start_item, i_value.end(), string(),
+		[i_separator](const string& accumulator, const string& current) {
+			return accumulator.empty() ? current : accumulator + i_separator + current;
+		}
+	);
+}
