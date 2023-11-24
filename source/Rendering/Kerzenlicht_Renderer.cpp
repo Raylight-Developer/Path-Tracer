@@ -1,53 +1,36 @@
 #include "Rendering/Kerzenlicht_Renderer.h"
 
-Ray::Ray() {
-	origin    = dvec3(0.0, 0.0, 0.0);
-	direction = dvec3(0.0, 0.0, 1.0);
-}
-
-Ray::Ray(const dvec3& i_origin, const dvec3& i_direction) {
-	origin = i_origin;
-	direction = i_direction;
-}
-
-Ray_Hit::Ray_Hit() {
-	ray_length     = 2.0;
-	hit_position   = dvec3(0.0, 0.0,  2.0);
-	hit_direction  = dvec3(0.0, 0.0, -1.0);
-	internal       = false;
-	hit_material   = nullptr;
-}
-
 Kerzenlicht_Renderer::Kerzenlicht_Renderer() {
-	file = File();
-	pixels = vector(file.render_camera.width, vector(file.render_camera.height, dvec4(0, 0, 0, 1)));
+	resolution = uvec2(1920, 1080);
+	render_data = new float[resolution.x * resolution.y * 4];
+	display_data = new float[0];
+
+	for (int x = 0; x < resolution.x; x++) {
+		for (int y = 0; y < resolution.y; y++) {
+			render_data[(y * resolution.x + x) * 4 + 0] = 1.0f;
+			render_data[(y * resolution.x + x) * 4 + 1] = 0.0f;
+			render_data[(y * resolution.x + x) * 4 + 2] = 1.0f;
+			render_data[(y * resolution.x + x) * 4 + 3] = 1.0f;
+		}
+	}
 }
 
-Ray Kerzenlicht_Renderer::f_getRay(const dvec2& i_uv) {
-	dvec2 uv = i_uv - 0.5;
-	uv.x *= double(file.render_camera.width) / double(file.render_camera.height);
+void Kerzenlicht_Renderer::f_updateDisplay(GLuint& ID) {
+	delete[] display_data;
+	display_data = render_data;
+	glGenTextures(1, &ID);
+	glBindTexture(GL_TEXTURE_2D, ID);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, resolution.x, resolution.y, 0, GL_RGBA, GL_FLOAT, display_data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-	dvec3 projection_center = file.render_camera.position + file.render_camera.focal_length * file.render_camera.z_vector;
-	dvec3 projection_u = normalize(cross(file.render_camera.z_vector, file.render_camera.y_vector)) * file.render_camera.sensor_width;
-	dvec3 projection_v = normalize(cross(projection_u, file.render_camera.z_vector)) * (file.render_camera.sensor_width / 1.0);
-	return Ray(
-		file.render_camera.position,
-		normalize(projection_center + (projection_u * uv.x) + (projection_v * uv.y) - file.render_camera.position)
-	);
+	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-double Kerzenlicht_Renderer::f_triIntersection(const Ray& i_ray, const Tri& i_tri) {
-	return 1.0;
-}
-
-double Kerzenlicht_Renderer::f_quadIntersection(const Ray& i_ray, const Quad& i_quad) {
-	return 1.0;
-}
-
-double Kerzenlicht_Renderer::f_sphereIntersection(const Ray& i_ray, const Sphere& i_sphere) {
-	return 1.0;
-}
-
-Ray_Hit Kerzenlicht_Renderer::f_sceneIntersection(const Ray& i_ray) {
-	return Ray_Hit();
+void Kerzenlicht_Renderer::f_bindDisplay(GLuint& ID, GLuint& program) {
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, ID);
+	glUniform1i(glGetUniformLocation(program, "render_output"), 0);
 }

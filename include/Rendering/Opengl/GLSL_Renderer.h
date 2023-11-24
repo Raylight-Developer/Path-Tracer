@@ -2,6 +2,7 @@
 
 #include "Include.h"
 
+#include "../Kerzenlicht_Renderer.h"
 #include "Object/Camera.h"
 
 #include "EBO.h"
@@ -30,9 +31,10 @@ struct GLSL_Renderer {
 	vector<GLfloat> vertices;
 	vector<GLuint> faces;
 
+	Kerzenlicht_Renderer renderer;
+
 	double iTime;
 	size_t iFrame;
-	uvec2  iResolution;
 	bool   iBidirectional;
 	bool   iCameraChange;
 
@@ -52,18 +54,14 @@ struct GLSL_Renderer {
 	VAO main_vao;
 	VBO main_vbo;
 	EBO main_ebo;
-	FBT raw_frame_tex;
-	FBT accumulation_tex;
-	FBO raw_frame_fbo;
-	FBO accumulation_fbo;
+	GLuint display_texture;
 	Shader_Program raw_frame_program;
-	Shader_Program accumulation_program;
-	Shader_Program postprocess_program;
 
 	GLSL_Renderer();
 
 	void f_recompile();
 	void f_init();
+	void f_exit();
 
 	static void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 	static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);

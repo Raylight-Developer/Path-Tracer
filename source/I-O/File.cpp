@@ -23,6 +23,16 @@ bool Image::f_load(const string& i_file_path) {
 		width = t_width;
 		height = t_height;
 		data_type = GL_UNSIGNED_BYTE;
+
+		for (int y = 0; y < height / 2; ++y) {
+			for (int x = 0; x < width * t_nrChannels; ++x) {
+				const int top_index = y * width * t_nrChannels + x;
+				const int bottom_index = (height - 1 - y) * width * t_nrChannels + x;
+				unsigned char temp = data[top_index];
+				data[top_index] = data[bottom_index];
+				data[bottom_index] = temp;
+			}
+		}
 		return true;
 	}
 	return false;
