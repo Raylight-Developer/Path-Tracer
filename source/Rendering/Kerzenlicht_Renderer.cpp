@@ -7,12 +7,23 @@ Kerzenlicht_Renderer::Kerzenlicht_Renderer() {
 
 	for (int x = 0; x < resolution.x; x++) {
 		for (int y = 0; y < resolution.y; y++) {
-			render_data[(y * resolution.x + x) * 4 + 0] = 1.0f;
-			render_data[(y * resolution.x + x) * 4 + 1] = 0.0f;
-			render_data[(y * resolution.x + x) * 4 + 2] = 1.0f;
-			render_data[(y * resolution.x + x) * 4 + 3] = 1.0f;
+			f_renderPixel(x, y, vec4((float)x / resolution.x, 0.0f, (float)y / resolution.y, 1.0f));
 		}
 	}
+}
+
+void Kerzenlicht_Renderer::f_renderPixel(const uint16& i_x, const uint16& i_y, const vec4& i_color) {
+	render_data[(i_y * resolution.x + i_x) * 4] = i_color.r;
+	render_data[(i_y * resolution.x + i_x) * 4 + 1] = i_color.g;
+	render_data[(i_y * resolution.x + i_x) * 4 + 2] = i_color.b;
+	render_data[(i_y * resolution.x + i_x) * 4 + 3] = i_color.a;
+}
+
+void Kerzenlicht_Renderer::f_renderPixel(const uvec2& i_pixel, const vec4& i_color) {
+	render_data[(i_pixel.y * resolution.x + i_pixel.x) * 4    ] = i_color.r;
+	render_data[(i_pixel.y * resolution.x + i_pixel.x) * 4 + 1] = i_color.g;
+	render_data[(i_pixel.y * resolution.x + i_pixel.x) * 4 + 2] = i_color.b;
+	render_data[(i_pixel.y * resolution.x + i_pixel.x) * 4 + 3] = i_color.a;
 }
 
 void Kerzenlicht_Renderer::f_updateDisplay(GLuint& ID) {
