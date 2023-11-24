@@ -14,8 +14,9 @@
 #include "Opengl/Shader_Program.h"
 
 struct GLSL_Renderer {
-	uvec2 display_resolution;
+	GLFWwindow* window;
 	Kerzenlicht_Renderer renderer;
+	uvec2 display_resolution;
 
 	double camera_move_sensitivity;
 	double camera_view_sensitivity;
@@ -37,9 +38,15 @@ struct GLSL_Renderer {
 
 	GLSL_Renderer();
 
-	void f_recompile();
 	void f_init();
 	void f_exit();
+
+	void f_initGlfw();
+	void f_initImGui();
+	void f_recompile();
+
+	void f_renderGui();
+	void f_displayLoop();
 
 	static void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 	static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);

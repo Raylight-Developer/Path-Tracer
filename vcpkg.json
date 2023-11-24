@@ -1,5 +1,5 @@
 {
-	"name": "path-tracer",
+	"name": "kerzenlicht",
 	"version-string": "0.1",
 	"dependencies": [
 		"glfw3",

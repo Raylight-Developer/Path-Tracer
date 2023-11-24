@@ -19,6 +19,14 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="External\imgui-1.90\backends\imgui_impl_glfw.h" />
+    <ClInclude Include="External\imgui-1.90\backends\imgui_impl_opengl3.h" />
+    <ClInclude Include="External\imgui-1.90\imconfig.h" />
+    <ClInclude Include="External\imgui-1.90\imgui.h" />
+    <ClInclude Include="External\imgui-1.90\imgui_internal.h" />
+    <ClInclude Include="External\imgui-1.90\imstb_rectpack.h" />
+    <ClInclude Include="External\imgui-1.90\imstb_textedit.h" />
+    <ClInclude Include="External\imgui-1.90\imstb_truetype.h" />
     <ClInclude Include="External\stb_image.h" />
     <ClInclude Include="Include\I-O\File.h" />
     <ClInclude Include="Include\Include.h" />
@@ -41,6 +49,13 @@
     <ClInclude Include="Include\Rendering\Render_Kernel.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="External\imgui-1.90\backends\imgui_impl_glfw.cpp" />
+    <ClCompile Include="External\imgui-1.90\backends\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="External\imgui-1.90\imgui.cpp" />
+    <ClCompile Include="External\imgui-1.90\imgui_demo.cpp" />
+    <ClCompile Include="External\imgui-1.90\imgui_draw.cpp" />
+    <ClCompile Include="External\imgui-1.90\imgui_tables.cpp" />
+    <ClCompile Include="External\imgui-1.90\imgui_widgets.cpp" />
     <ClCompile Include="Source\Rendering\Render_Kernel.cpp" />
     <ClCompile Include="Source\Object\Scene_Object.cpp" />
     <ClCompile Include="Source\Object\Mesh.cpp" />
@@ -116,11 +131,11 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(SolutionDir)\Include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)\Include;$(SolutionDir)\External\imgui-1.90;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(SolutionDir)\Include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)\Include;$(SolutionDir)\External\imgui-1.90;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">

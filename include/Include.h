@@ -38,6 +38,12 @@
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <imgui.h> // https://github.com/ocornut/imgui/releases/tag/v1.90
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_opengl3.h>
+
+#define GL_SILENCE_DEPRECATION
+
 using namespace std;
 
 using fvec1 = float;     // 32-bits

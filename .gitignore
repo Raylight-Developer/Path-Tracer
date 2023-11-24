@@ -1,6 +1,6 @@
 .vs/
 x64/
-external/vcpkg/
+External/vcpkg/
 enc_temp_folder/
-external/x64-windows/
-vcpkg_installed/
+External/x64-windows/
+External/

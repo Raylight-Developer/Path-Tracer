@@ -22,9 +22,169 @@ GLSL_Renderer::GLSL_Renderer() {
 	raw_frame_program = Shader_Program("Display Shader");
 }
 
+void GLSL_Renderer::f_init() {
+	f_initGlfw();
+	f_initImGui();
+	f_displayLoop();
+	f_exit();
+}
+
+void GLSL_Renderer::f_exit() {
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
+
+	glfwDestroyWindow(window);
+	glfwTerminate();
+}
+
+void GLSL_Renderer::f_initGlfw() {
+	glfwInit();
+
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+	window = glfwCreateWindow(display_resolution.x, display_resolution.y, "GLSL Renderer", NULL, NULL);
+
+	Image icon = Image();
+	if (icon.f_load("./resources/Icon.png", false)) {
+		GLFWimage image_icon;
+		image_icon.width = icon.width;
+		image_icon.height = icon.height;
+		image_icon.pixels = icon.data;
+		glfwSetWindowIcon(window, 1, &image_icon);
+	}
+
+	if (window == NULL) {
+		cout << "Failed to create GLFW window" << endl;
+		glfwTerminate();
+	}
+
+	glfwMakeContextCurrent(window);
+	glfwSwapInterval(1);
+	gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+
+	glfwSetWindowUserPointer(window, this);
+
+	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+	glfwSetCursorPosCallback(window, cursor_position_callback);
+	glfwSetMouseButtonCallback(window, mouse_button_callback);
+	glfwSetScrollCallback(window, scroll_callback);
+	glfwSetKeyCallback(window, key_callback);
+}
+
+void GLSL_Renderer::f_initImGui() {
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+	ImGui::StyleColorsDark();
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init("#version 460");
+}
+
 void GLSL_Renderer::f_recompile() {
 	raw_frame_program.f_compile();
 	run_time = glfwGetTime();
+}
+
+void GLSL_Renderer::f_renderGui() {
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+	ImGui::NewFrame();
+
+	ImGui::Begin("Hello, ImGui!");
+	ImGui::Text("Hello, world!");
+	ImGui::End();
+}
+
+void GLSL_Renderer::f_displayLoop() {
+	glViewport(0, 0, display_resolution.x, display_resolution.y);
+
+	// Generates Shader object using shaders defualt.vert and default.frag
+	raw_frame_program.f_init("./resources/Shaders/Display.glsl");
+	renderer.f_updateDisplay(display_texture);
+
+	// VERTICES //
+	GLfloat vertices[16] = {
+		-1.0f, -1.0f, 0.0f, 0.0f,
+			1.0f, -1.0f, 1.0f, 0.0f,
+			1.0f,  1.0f, 1.0f, 1.0f,
+		-1.0f,  1.0f, 0.0f, 1.0f,
+	};
+	GLuint faces[6] = {
+		0, 1, 2,
+		2, 3, 0
+	};
+	// VAO Bind
+	main_vao.f_init();
+	main_vao.f_bind();
+	// VBO Init
+	main_vbo.f_init(vertices, 16 * sizeof(float));
+	// EBO Init
+	main_ebo.f_init(faces, 6 * sizeof(float));
+	// VAO Link
+	main_vao.f_linkVBO(main_vbo, 0, 2, GL_FLOAT, 4 * sizeof(GLfloat), (void*)0);
+	main_vao.f_linkVBO(main_vbo, 1, 2, GL_FLOAT, 4 * sizeof(GLuint), (void*)(2 * sizeof(GLfloat)));
+
+	main_vao.f_unbind();
+	main_vbo.f_unbind();
+	main_ebo.f_unbind();
+
+	glClearColor(0, 0, 0, 1);
+	main_vao.f_bind();
+	raw_frame_program.f_activate();
+
+	while (!glfwWindowShouldClose(window)) {
+		glfwPollEvents();
+		if (keys[GLFW_KEY_D]) {
+			renderer.file.render_camera.f_move(1, 0, 0, camera_move_sensitivity);
+		}
+		if (keys[GLFW_KEY_A]) {
+			renderer.file.render_camera.f_move(-1, 0, 0, camera_move_sensitivity);
+		}
+		if (keys[GLFW_KEY_E] || keys[GLFW_KEY_SPACE]) {
+			renderer.file.render_camera.f_move(0, 1, 0, camera_move_sensitivity);
+		}
+		if (keys[GLFW_KEY_Q] || keys[GLFW_KEY_LEFT_CONTROL]) {
+			renderer.file.render_camera.f_move(0, -1, 0, camera_move_sensitivity);
+		}
+		if (keys[GLFW_KEY_W]) {
+			renderer.file.render_camera.f_move(0, 0, 1, camera_move_sensitivity);
+		}
+		if (keys[GLFW_KEY_S]) {
+			renderer.file.render_camera.f_move(0, 0, -1, camera_move_sensitivity);
+		}
+
+		glClear(GL_COLOR_BUFFER_BIT);
+		f_renderGui();
+
+		renderer.f_render();
+		renderer.f_updateDisplay(display_texture);
+
+		current_time = clock();
+		frame_time = (double)(current_time - last_time) / 1000.0;
+		last_time = current_time;
+		run_time += frame_time;
+		window_time += frame_time;
+
+		renderer.f_bindDisplay(display_texture, raw_frame_program.ID);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+		if (window_time > 0.2) {
+			window_time -= 0.2;
+			Lace title;
+			title << "KerzenLicht | " << 1.0 / frame_time << " Fps";
+			glfwSetWindowTitle(window, title.str().c_str());
+		}
+
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		glfwSwapBuffers(window);
+	}
 }
 
 void GLSL_Renderer::framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -93,124 +253,4 @@ void GLSL_Renderer::key_callback(GLFWwindow* window, int key, int scancode, int 
 	else if (action == GLFW_RELEASE) {
 		instance->keys[key] = false;
 	}
-}
-
-void GLSL_Renderer::f_init() {
-	glfwInit();
-
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-	GLFWwindow* window = glfwCreateWindow(display_resolution.x, display_resolution.y, "GLSL Renderer", NULL, NULL);
-	
-	Image icon = Image();
-	if (icon.f_load("./resources/Icon.png", false)) {
-		GLFWimage image_icon;
-		image_icon.width = icon.width;
-		image_icon.height = icon.height;
-		image_icon.pixels = icon.data;
-		glfwSetWindowIcon(window, 1, &image_icon);
-	}
-
-	if (window == NULL) {
-		cout << "Failed to create GLFW window" << endl;
-		glfwTerminate();
-	}
-
-	glfwMakeContextCurrent(window);
-	gladLoadGL();
-
-	glfwSetWindowUserPointer(window, this);
-
-	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-	glfwSetCursorPosCallback(window, cursor_position_callback);
-	glfwSetMouseButtonCallback(window, mouse_button_callback);
-	glfwSetScrollCallback(window, scroll_callback);
-	glfwSetKeyCallback(window, key_callback);
-
-	glViewport(0, 0, display_resolution.x , display_resolution.y);
-
-	// Generates Shader object using shaders defualt.vert and default.frag
-	raw_frame_program.f_init("./resources/Shaders/Display.glsl");
-	renderer.f_updateDisplay(display_texture);
-
-	// VERTICES //
-	GLfloat vertices[16] = {
-			-1.0f, -1.0f, 0.0f, 0.0f,
-			 1.0f, -1.0f, 1.0f, 0.0f,
-			 1.0f,  1.0f, 1.0f, 1.0f,
-			-1.0f,  1.0f, 0.0f, 1.0f,
-	};
-	GLuint faces[6] = {
-		0, 1, 2,
-		2, 3, 0
-	};
-		// VAO Bind
-	main_vao.f_init();
-	main_vao.f_bind();
-		// VBO Init
-	main_vbo.f_init(vertices, 16 * sizeof(float));
-		// EBO Init
-	main_ebo.f_init(faces, 6 * sizeof(float));
-		// VAO Link
-	main_vao.f_linkVBO(main_vbo, 0, 2, GL_FLOAT, 4 * sizeof(GLfloat), (void*)0);
-	main_vao.f_linkVBO(main_vbo, 1, 2, GL_FLOAT, 4 * sizeof(GLuint ), (void*)(2 * sizeof(GLfloat)));
-
-	main_vao.f_unbind();
-	main_vbo.f_unbind();
-	main_ebo.f_unbind();
-
-	glClearColor(0, 0, 0, 1);
-	main_vao.f_bind();
-	raw_frame_program.f_activate();
-
-	while (!glfwWindowShouldClose(window)) {
-		glfwPollEvents();
-		if (keys[GLFW_KEY_D]) {
-			renderer.file.render_camera.f_move(1, 0, 0, camera_move_sensitivity);
-		}
-		if (keys[GLFW_KEY_A]) {
-			renderer.file.render_camera.f_move(-1, 0, 0, camera_move_sensitivity);
-		}
-		if (keys[GLFW_KEY_E] || keys[GLFW_KEY_SPACE]) {
-			renderer.file.render_camera.f_move(0, 1, 0, camera_move_sensitivity);
-		}
-		if (keys[GLFW_KEY_Q] || keys[GLFW_KEY_LEFT_CONTROL]) {
-			renderer.file.render_camera.f_move(0, -1, 0, camera_move_sensitivity);
-		}
-		if (keys[GLFW_KEY_W]) {
-			renderer.file.render_camera.f_move(0, 0, 1, camera_move_sensitivity);
-		}
-		if (keys[GLFW_KEY_S]) {
-			renderer.file.render_camera.f_move(0, 0, -1, camera_move_sensitivity);
-		}
-
-		renderer.f_render();
-		renderer.f_updateDisplay(display_texture);
-
-		current_time = clock();
-		frame_time = (double)(current_time - last_time) / 1000.0;
-		last_time = current_time;
-		run_time += frame_time;
-		window_time += frame_time;
-
-		glClear(GL_COLOR_BUFFER_BIT);
-		renderer.f_bindDisplay(display_texture, raw_frame_program.ID);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-		if (window_time > 0.2) {
-			window_time -= 0.2;
-			Lace title;
-			title << "KerzenLicht | " << 1.0 / frame_time << " Fps";
-			glfwSetWindowTitle(window, title.str().c_str());
-		}
-
-		glfwSwapBuffers(window);
-	}
-	f_exit();
-}
-
-void GLSL_Renderer::f_exit() {
-	glfwTerminate();
 }
