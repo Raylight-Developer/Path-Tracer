@@ -1,9 +1,0 @@
-{
-	"name": "kerzenlicht",
-	"version-string": "0.1",
-	"dependencies": [
-		"glfw3",
-		"glm"
-	],
-	"builtin-baseline": "da21e45c9ae689f63aa27f3a4ee0e64fe6b16494"
-}

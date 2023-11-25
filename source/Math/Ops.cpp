@@ -1,5 +1,8 @@
 #include "Math/Ops.h"
 
+#include <codecvt>
+#include <locale>
+
 float fastInvSqrt(const float& number) {
 	long i;
 	float x2, y;
@@ -27,6 +30,21 @@ vector<string> splitString(const string& input, const string& delimiter) {
 	tokens.push_back(input.substr(start));
 	return tokens;
 }
+
+LPCWSTR f_toLCPWString(const string& i_string) {
+	int size = MultiByteToWideChar(CP_UTF8, 0, i_string.c_str(), -1, NULL, 0);
+	wchar_t* wideString = new wchar_t[size];
+	MultiByteToWideChar(CP_UTF8, 0, i_string.c_str(), -1, wideString, size);
+	return wideString;
+}
+
+string f_toString(const WIN32_FIND_DATAW& i_string) {
+	int size = WideCharToMultiByte(CP_UTF8, 0, i_string.cFileName, -1, NULL, 0, NULL, NULL);
+	char* multiByteString = new char[size];
+	WideCharToMultiByte(CP_UTF8, 0, i_string.cFileName, -1, multiByteString, size, NULL, NULL);
+	return multiByteString;
+}
+
 vector<string> splitString(const string& input) {
 	vector<string> result;
 	istringstream iss(input);

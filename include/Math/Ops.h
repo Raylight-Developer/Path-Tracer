@@ -18,6 +18,9 @@ vector<string> splitString(const string& input);
 vector<string> splitStringToLines(const string& P_Lines);
 vector<string> splitString(const string& input, const string& delimiter);
 
+// Windows
+LPCWSTR f_toLCPWString(const string& i_string);
+string f_toString(const WIN32_FIND_DATAW& i_string);
 
 //io
 vector<char> readFile(const string& i_file_path);
