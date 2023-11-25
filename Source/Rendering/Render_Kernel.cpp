@@ -1,32 +1,100 @@
 #include "Rendering/Render_Kernel.h"
 
-Ray f_cameraRay(const Camera& i_camera, const uint32& i_u, const uint32& i_v) {
-	const vec3 projection_center = i_camera.position + i_camera.sensor_width * i_camera.z_vector;
-	const vec3 projection_u = normalize(cross(i_camera.z_vector, i_camera.y_vector)) * i_camera.sensor_width;
-	const vec3 projection_v = normalize(cross(projection_u, i_camera.z_vector)) * i_camera.sensor_width;
 
+
+// Randomness
+vec1 f_randVec1() {
+	static uniform_real_distribution<vec1> distribution(0.0, 1.0);
+	static mt19937 generator;
+	return distribution(generator);
+}
+
+vec2 f_randVec2() {
+	return vec2(f_randVec1(), f_randVec1());
+}
+
+vec3 f_randVec3() {
+	return vec3(f_randVec1(), f_randVec1(), f_randVec1());
+}
+
+vec1 f_randVec1(const vec1& i_min, const vec1& i_max) {
+	return i_min + (i_max - i_min) * f_randVec1();
+}
+
+vec2 f_randVec2(const vec1& i_min, const vec1& i_max) {
+	return vec2(i_min + (i_max - i_min)) * f_randVec2();
+}
+
+vec3 f_randVec3(const vec1& i_min, const vec1& i_max) {
+	return vec3(i_min + (i_max - i_min)) * f_randVec3();
+}
+
+vec1 f_randUnitVec1() {
+	while (true) {
+		const vec1 value = f_randVec1(-1.0, 1.0);
+		if (abs(pow(value, val(2.0))) < 1.0)
+			return value;
+	}
+}
+
+vec2 f_randUnitVec2() {
+	while (true) {
+		const vec2 value = f_randVec2(-1.0, 1.0);
+		if (pow(value.length(), val(2.0)) < 1.0)
+			return value;
+	}
+}
+
+vec3 f_randUnitVec3() {
+	while (true) {
+		const vec3 value = f_randVec3(-1.0, 1.0);
+		if (pow(value.length(), val(2.0)) < 1.0)
+			return value;
+	}
+}
+
+Ray f_cameraRay(const Camera& i_camera, const uint32& i_u, const uint32& i_v) {
+	if (i_camera.depth_of_field) {
+		return Ray(
+			i_camera.position,// + (f_randUnitVec1() * i_camera.depth_u) + (f_randUnitVec1() * i_camera.depth_v),
+			normalize(
+				i_camera.projection_center
+				+ i_camera.projection_u * val(i_u)
+				+ i_camera.projection_v * val(i_v)
+				- i_camera.position
+			)
+		);
+	}
 	return Ray(
 		i_camera.position,
+
 		normalize(
-			projection_center
-			+ (projection_u * val(i_u) / val(i_camera.resolution.x))
-			+ (projection_v * val(i_v) / val(i_camera.resolution.y))
+			i_camera.projection_center
+			+ i_camera.projection_u * val(i_u)
+			+ i_camera.projection_v * val(i_v)
 			- i_camera.position
 		)
 	);
 }
 
 Ray f_cameraRay(const Camera& i_camera, const vec2& i_uv) {
-	const vec3 projection_center = i_camera.position + i_camera.sensor_width * i_camera.z_vector;
-	const vec3 projection_u = normalize(cross(i_camera.z_vector, i_camera.y_vector)) * i_camera.sensor_width;
-	const vec3 projection_v = normalize(cross(projection_u, i_camera.z_vector)) * i_camera.sensor_width;
-
+	if (i_camera.depth_of_field) {
+		return Ray(
+			i_camera.position,
+			normalize(
+				i_camera.projection_center
+				+ i_camera.projection_u * i_uv.x
+				+ i_camera.projection_v * i_uv.y
+				- i_camera.position
+			)
+		);
+	}
 	return Ray(
 		i_camera.position,
 		normalize(
-			projection_center
-			+ projection_u * i_uv.x
-			+ projection_v * i_uv.y
+			i_camera.projection_center
+			+ i_camera.projection_u * i_uv.x
+			+ i_camera.projection_v * i_uv.y
 			- i_camera.position
 		)
 	);

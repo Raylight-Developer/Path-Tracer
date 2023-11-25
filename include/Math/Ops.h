@@ -26,8 +26,6 @@ vector<char> readFile(const string& i_file_path);
 mat3 f_eulerToRotationMatrix(const vec3& i_value);
 
 // math
-float random_float();
-float random_float(float min, float max);
 
 // string-tokens
 vector<string> f_splitString(const string& i_value, const string& i_delimiter = " ");

@@ -96,8 +96,6 @@ using val64 = double; // double
 	using mat4 = glm::dmat4; // 1024-bits
 	inline vec1 val(const float& val)  { return static_cast<double>(val); }
 	inline vec1 val(const double& val) { return val; }
-	inline vec1 val(const uint32& val) { return static_cast<double>(val); }
-	inline vec2 vec(const uvec2& val) { return static_cast<vec2>(val); }
 
 	const vec1 MAX_VEC1 = numeric_limits<double>::max();
 #else
@@ -111,11 +109,14 @@ using val64 = double; // double
 	using mat4 = glm::mat4; // 512-bits
 	inline vec1 val(const float& val)  { return val; }
 	inline vec1 val(const double& val) { return static_cast<float>(val); }
-	inline vec1 val(const uint32& val) { return static_cast<float>(val); }
-	inline vec2 vec(const uvec2& val)  { return static_cast<vec2>(val); }
 
 	const vec1 MAX_VEC1 = numeric_limits<float>::max();
 #endif
+
+
+inline vec1 val(const int& val)    { return static_cast<vec1>(val); }
+inline vec1 val(const uint32& val) { return static_cast<vec1>(val); }
+inline vec2 vec(const uvec2& val)  { return static_cast<vec2>(val); }
 
 #define PI          vec1(3.141592653589793)
 #define TWO_PI      vec1(6.283185307179586)

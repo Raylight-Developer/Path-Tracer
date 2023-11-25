@@ -78,6 +78,8 @@ void GLSL_Renderer::f_initImGui() {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	io.FontGlobalScale = 2.25f;
+	io.IniFilename = nullptr;
 	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
 	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
@@ -96,9 +98,15 @@ void GLSL_Renderer::f_renderGui() {
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
 
+	ImGui::SetNextWindowPos(ImVec2(0, 0));
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	ImGui::SetNextWindowSize(io.DisplaySize);
+	ImGui::Begin("Fullscreen Window", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+
 	ImGui::Begin("Hello, ImGui!");
 	ImGui::Text("Hello, world!");
 	ImGui::End();
+
 }
 
 void GLSL_Renderer::f_displayLoop() {
@@ -111,8 +119,8 @@ void GLSL_Renderer::f_displayLoop() {
 	// VERTICES //
 	GLfloat vertices[16] = {
 		-1.0f, -1.0f, 0.0f, 0.0f,
-			1.0f, -1.0f, 1.0f, 0.0f,
-			1.0f,  1.0f, 1.0f, 1.0f,
+		 1.0f, -1.0f, 1.0f, 0.0f,
+		 1.0f,  1.0f, 1.0f, 1.0f,
 		-1.0f,  1.0f, 0.0f, 1.0f,
 	};
 	GLuint faces[6] = {
@@ -160,7 +168,10 @@ void GLSL_Renderer::f_displayLoop() {
 		}
 
 		glClear(GL_COLOR_BUFFER_BIT);
-		f_renderGui();
+
+		#if DISPLAY_GUI
+			f_renderGui();
+		#endif
 
 		renderer.f_render();
 		renderer.f_updateDisplay(display_texture);
@@ -181,8 +192,10 @@ void GLSL_Renderer::f_displayLoop() {
 			glfwSetWindowTitle(window, title.str().c_str());
 		}
 
-		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		#if DISPLAY_GUI
+			ImGui::Render();
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		#endif
 		glfwSwapBuffers(window);
 	}
 }

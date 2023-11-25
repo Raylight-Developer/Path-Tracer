@@ -1,4 +1,5 @@
-#define HIGHPRECISION false
+#define HIGH_PRECISION false
+#define DISPLAY_GUI false
 
 #include "Include.h"
 #include "Rendering/GLSL_Renderer.h"

@@ -12,7 +12,9 @@ Kerzenlicht_Renderer::Kerzenlicht_Renderer() {
 }
 
 void Kerzenlicht_Renderer::f_render() {
+	file.render_camera.f_compile();
 	const vec1 aspect_ratio = val(file.render_camera.resolution.y) / val(file.render_camera.resolution.x);
+
 	for (uint32 x = 0; x < file.render_camera.resolution.x; x++) {
 		for (uint32 y = 0; y < file.render_camera.resolution.y; y++) {
 			const vec2 uv = vec2(x, y * aspect_ratio) / vec(file.render_camera.resolution) - vec2(0.5, 0.5 * aspect_ratio);

@@ -162,16 +162,6 @@ mat3 f_eulerToRotationMatrix(const vec3& i_value) {
 	return mat3(rollMat * yawMat * pitchMat);
 }
 
-float random_float() {
-	static std::uniform_real_distribution<float> distribution(0.0f, 1.0f);
-	static std::mt19937 generator;
-	return distribution(generator);
-}
-
-float random_float(float min, float max) {
-	return min + random_float() * (max - min);
-}
-
 vector<string> f_splitString(const string& i_value, const string& i_delimiter) {
 	vector<string> tokens;
 	string::size_type start = 0;

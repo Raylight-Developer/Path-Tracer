@@ -26,6 +26,18 @@ struct Intersection {
 	Material* material;
 };
 
+// Randomness
+vec1 f_randVec1();
+vec2 f_randVec2();
+vec3 f_randVec3();
+vec1 f_randVec1(const vec1& i_min, const vec1& i_max);
+vec2 f_randVec2(const vec1& i_min, const vec1& i_max);
+vec3 f_randVec3(const vec1& i_min, const vec1& i_max);
+
+vec1 f_randUnitVec1();
+vec2 f_randUnitVec2();
+vec3 f_randUnitVec3();
+
 // Ray
 Ray f_cameraRay(const Camera& i_camera, const uint32& i_u, const uint32& i_v);
 Ray f_cameraRay(const Camera& i_camera, const vec2& i_uv);
